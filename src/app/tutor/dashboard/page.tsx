@@ -1,0 +1,259 @@
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import {
+  DollarSign,
+  Users,
+  BookOpen,
+  Star,
+  TrendingUp,
+  FileCheck,
+  PlusCircle,
+  ArrowRight,
+  Eye,
+  CheckCircle2,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
+import { useAppStore } from "@/lib/store";
+
+const revenueData = [
+  { month: "May", revenue: 8200 },
+  { month: "Jun", revenue: 9400 },
+  { month: "Jul", revenue: 11200 },
+  { month: "Aug", revenue: 12800 },
+  { month: "Sep", revenue: 13900 },
+  { month: "Oct", revenue: 14850 },
+];
+
+export default function TutorDashboard() {
+  const { currentUser, courses, reviews } = useAppStore();
+
+  const myCourses = courses.filter(
+    (c) =>
+      c.instructor.id === currentUser.id ||
+      c.instructor.name === currentUser.name ||
+      currentUser.role === "tutor"
+  );
+
+  const totalStudents = myCourses.reduce((sum, c) => sum + c.enrolledCount, 0) || 5460;
+  const pendingReviews = reviews.filter((r) => r.status === "pending");
+
+  return (
+    <div className="space-y-8">
+      {/* Welcome Header */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600">
+            Instructor Studio • Live Analytics
+          </span>
+          <h1 className="mt-1 text-2xl font-extrabold text-foreground sm:text-3xl">
+            Tutor Studio Overview
+          </h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            Monitor course enrollment velocity, student performance, and pending assignment reviews.
+          </p>
+        </div>
+
+        <Link
+          href="/tutor/courses/new"
+          className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg transition-transform hover:scale-105"
+        >
+          <PlusCircle className="h-4 w-4" /> Create New Course
+        </Link>
+      </div>
+
+      {/* 4 Stat Cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">Total Revenue</span>
+            <span className="rounded-xl bg-blue-500/10 p-2 text-blue-600">
+              <DollarSign className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">$14,850</p>
+          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+            <TrendingUp className="h-3 w-3" /> +18.4% this month
+          </span>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">Total Students</span>
+            <span className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600">
+              <Users className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{totalStudents.toLocaleString()}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Across all courses</p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">Average Rating</span>
+            <span className="rounded-xl bg-amber-500/10 p-2 text-amber-500">
+              <Star className="h-4 w-4 fill-amber-500" />
+            </span>
+          </div>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">4.92 ★</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">From 617 verified reviews</p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">Pending Reviews</span>
+            <span className="rounded-xl bg-purple-500/10 p-2 text-purple-600">
+              <FileCheck className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{pendingReviews.length}</p>
+          <Link
+            href="/tutor/reviews"
+            className="mt-1 block text-[11px] font-semibold text-blue-600 hover:underline"
+          >
+            Review submissions &rarr;
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Grid: Revenue Analytics & Pending Reviews */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Revenue Chart (2 cols) */}
+        <div className="space-y-4 lg:col-span-2">
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center border-b border-border/60 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Monthly Instructor Revenue</h2>
+                <p className="text-xs text-muted-foreground">6-month payout growth trajectory</p>
+              </div>
+              <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600">
+                85% Platform Royalty
+              </span>
+            </div>
+
+            <div className="mt-6 h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "12px",
+                    }}
+                    formatter={(val) => [`$${val}`, "Revenue"]}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Top Courses List */}
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border/60 pb-4">
+              <h2 className="text-base font-bold text-foreground">Active Curriculum Management</h2>
+              <Link href="/tutor/courses" className="text-xs font-bold text-blue-600 hover:underline">
+                View all &rarr;
+              </Link>
+            </div>
+
+            <div className="mt-4 divide-y divide-border/60">
+              {myCourses.slice(0, 3).map((c) => (
+                <div key={c.id} className="flex items-center justify-between py-3.5">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-foreground">{c.title}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                          c.status === "published"
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : "bg-amber-500/10 text-amber-600"
+                        }`}
+                      >
+                        {c.status.replace("_", " ").toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {c.enrolledCount.toLocaleString()} students • ${c.price} • {c.level}
+                    </p>
+                  </div>
+
+                  <Link
+                    href={`/user/learn/${c.id}`}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Preview Course
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Student Submissions Column (1 col) */}
+        <div className="space-y-4">
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border/60 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Submissions to Grade</h2>
+                <p className="text-xs text-muted-foreground">{pendingReviews.length} pending</p>
+              </div>
+              <Link
+                href="/tutor/reviews"
+                className="text-xs font-bold text-blue-600 hover:underline"
+              >
+                All reviews &rarr;
+              </Link>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {pendingReviews.map((rev) => (
+                <div key={rev.id} className="rounded-2xl border border-border/80 bg-muted/30 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">{rev.studentName}</span>
+                    <span className="text-[10px] text-muted-foreground">{rev.submittedAt}</span>
+                  </div>
+                  <p className="mt-1 text-xs font-semibold text-primary">{rev.courseTitle}</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground italic">
+                    "{rev.submissionText}"
+                  </p>
+                  <Link
+                    href="/tutor/reviews"
+                    className="mt-3 flex items-center justify-center gap-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+                  >
+                    <FileCheck className="h-3.5 w-3.5" /> Grade Submission
+                  </Link>
+                </div>
+              ))}
+
+              {pendingReviews.length === 0 && (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500/60" />
+                  <p className="mt-2 font-bold text-foreground">All caught up!</p>
+                  <p className="text-[11px]">No student assignments pending grading.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
