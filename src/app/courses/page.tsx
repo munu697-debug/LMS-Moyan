@@ -114,7 +114,7 @@ export default function CoursesCatalogPage() {
       {/* Courses Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((course) => {
-          const isEnrolled = currentUser.enrolledCourseIds.includes(course.id);
+          const isEnrolled = currentUser?.enrolledCourseIds?.includes(course.id) ?? false;
           return (
             <div
               key={course.id}

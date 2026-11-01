@@ -36,12 +36,14 @@ const revenueData = [
 export default function TutorDashboard() {
   const { currentUser, courses, reviews } = useAppStore();
 
-  const myCourses = courses.filter(
-    (c) =>
-      c.instructor.id === currentUser.id ||
-      c.instructor.name === currentUser.name ||
-      currentUser.role === "tutor"
-  );
+  const myCourses = currentUser
+    ? courses.filter(
+        (c) =>
+          c.instructor.id === currentUser.id ||
+          c.instructor.name === currentUser.name ||
+          currentUser.role === "tutor"
+      )
+    : [];
 
   const totalStudents = myCourses.reduce((sum, c) => sum + c.enrolledCount, 0) || 5460;
   const pendingReviews = reviews.filter((r) => r.status === "pending");

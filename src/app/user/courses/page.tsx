@@ -87,9 +87,11 @@ export default function UserCoursesPage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {filteredCourses.map((c) => {
           const allLessonIds = c.modules.flatMap((m) => m.lessons.map((l) => l.id));
-          const finishedInCourse = allLessonIds.filter((id) =>
-            currentUser.completedLessonIds.includes(id)
-          ).length;
+          const finishedInCourse = currentUser
+            ? allLessonIds.filter((id) =>
+                currentUser.completedLessonIds.includes(id)
+              ).length
+            : 0;
           const progressPct =
             allLessonIds.length > 0
               ? Math.round((finishedInCourse / allLessonIds.length) * 100)

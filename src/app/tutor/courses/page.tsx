@@ -20,12 +20,14 @@ export default function TutorCoursesPage() {
   const { courses, deleteCourse, currentUser } = useAppStore();
   const [filter, setFilter] = useState("all");
 
-  const myCourses = courses.filter(
-    (c) =>
-      c.instructor.id === currentUser.id ||
-      c.instructor.name === currentUser.name ||
-      currentUser.role === "tutor"
-  );
+  const myCourses = currentUser
+    ? courses.filter(
+        (c) =>
+          c.instructor.id === currentUser.id ||
+          c.instructor.name === currentUser.name ||
+          currentUser.role === "tutor"
+      )
+    : [];
 
   const filtered = myCourses.filter((c) => {
     if (filter === "all") return true;

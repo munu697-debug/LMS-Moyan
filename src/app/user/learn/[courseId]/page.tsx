@@ -242,7 +242,7 @@ export default function LearnCoursePage({ params }: PageProps) {
                   <div className="space-y-1.5">
                     {mod.lessons.map((les) => {
                       const isCurrent = les.id === activeLessonId;
-                      const isDone = currentUser.completedLessonIds.includes(les.id);
+                      const isDone = currentUser?.completedLessonIds.includes(les.id) ?? false;
                       return (
                         <button
                           key={les.id}

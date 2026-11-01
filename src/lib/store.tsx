@@ -394,6 +394,7 @@ interface AppContextType {
   isAuthenticated: boolean;
   currentUser: User | null;
   currentRole: UserRole;
+  setCurrentRole: (role: UserRole) => void;
   users: User[];
   courses: Course[];
   reviews: SubmissionReview[];
@@ -811,7 +812,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const setCurrentRole = (role: UserRole) => {
+    if (currentUser) {
+      setCurrentUser((prev) => (prev ? { ...prev, role } : null));
+      setUsers((prev) =>
+        prev.map((u) => (u.id === currentUser.id ? { ...u, role } : u))
+      );
+    }
+  };
+
   const updateUserRole = (userId: string, newRole: UserRole) => {
+    if (currentUser?.id === userId) {
+      setCurrentUser((prev) => (prev ? { ...prev, role: newRole } : null));
+    }
     setUsers((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
     );
@@ -842,6 +855,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         currentUser,
         currentRole,
+        setCurrentRole,
         users,
         courses,
         reviews,

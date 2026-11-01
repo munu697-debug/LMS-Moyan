@@ -114,6 +114,10 @@ export default function NewCoursePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      toast.error("Please sign in as an instructor to create courses.");
+      return;
+    }
     if (!title.trim()) {
       toast.error("Please enter a course title.");
       return;
