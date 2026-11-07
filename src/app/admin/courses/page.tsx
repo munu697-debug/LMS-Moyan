@@ -91,9 +91,9 @@ export default function AdminCoursesPage() {
     const selectedInstructorUser = users.find((u) => u.id === newInstructorId) || currentUser;
     const instructorObj = {
       id: selectedInstructorUser?.id || "admin-system",
-      name: selectedInstructorUser?.name || "Marcus Vance",
+      name: selectedInstructorUser?.name || "Super Admin",
       title: selectedInstructorUser?.title || (selectedInstructorUser?.role === "admin" ? "Platform Administrator" : "Verified Instructor"),
-      avatar: selectedInstructorUser?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+      avatar: selectedInstructorUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     };
 
     createCourse({

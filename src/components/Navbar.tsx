@@ -121,15 +121,23 @@ export function Navbar() {
             <>
               {/* Active User Pill */}
               <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-3 py-1.5 shadow-sm">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-7 w-7 rounded-full border border-border object-cover"
-                />
+                {currentUser.role === "admin" ? (
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-purple-700 to-indigo-600 text-[10px] font-extrabold text-white shadow-sm">
+                    SA
+                  </div>
+                ) : (
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-7 w-7 rounded-full border border-border object-cover"
+                  />
+                )}
                 <div className="text-left text-xs leading-none">
-                  <p className="font-semibold text-foreground truncate max-w-[95px]">{currentUser.name}</p>
+                  <p className="font-semibold text-foreground truncate max-w-[100px]">
+                    {currentUser.role === "admin" ? "Super Admin" : currentUser.name}
+                  </p>
                   <span className={`mt-0.5 inline-flex items-center gap-1 rounded-md border px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider ${roleMeta.color}`}>
                     <RoleIcon className="h-2.5 w-2.5" />
                     {roleMeta.label}
@@ -199,15 +207,23 @@ export function Navbar() {
               {currentUser ? (
                 <div className="flex items-center justify-between border-b border-border/60 pb-4">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={currentUser.avatar}
-                      alt={currentUser.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-10 w-10 rounded-full border border-border object-cover"
-                    />
+                    {currentUser.role === "admin" ? (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 text-xs font-extrabold text-white shadow-sm border border-purple-400/30">
+                        SA
+                      </div>
+                    ) : (
+                      <img
+                        src={currentUser.avatar}
+                        alt={currentUser.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-10 w-10 rounded-full border border-border object-cover"
+                      />
+                    )}
                     <div>
-                      <p className="text-sm font-bold text-foreground">{currentUser.name}</p>
+                      <p className="text-sm font-bold text-foreground">
+                        {currentUser.role === "admin" ? "Super Admin" : currentUser.name}
+                      </p>
                       <p className="text-xs text-muted-foreground">{currentUser.email}</p>
                       <span className={`mt-1 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${roleMeta.color}`}>
                         <RoleIcon className="h-3 w-3" /> {roleMeta.label}

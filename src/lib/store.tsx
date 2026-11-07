@@ -344,11 +344,11 @@ const INITIAL_USERS: User[] = [
   },
   {
     id: "user-admin-1",
-    name: "Marcus Vance",
+    name: "Super Admin",
     email: "marcus.admin@moyan.edu",
     password: "password123",
     role: "admin",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+    avatar: "",
     title: "Platform Administrator & Head of Ops",
     bio: "Overseeing learning quality, curriculum approvals, platform security, and tutor verification at Moyan Learn.",
     status: "active",
@@ -457,8 +457,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.isAuthenticated !== undefined) setIsAuthenticated(parsed.isAuthenticated);
-        if (parsed.currentUser) setCurrentUser(parsed.currentUser);
-        if (parsed.users) setUsers(parsed.users);
+        if (parsed.currentUser) {
+          const user = parsed.currentUser;
+          if (user.role === "admin") {
+            user.name = "Super Admin";
+            user.avatar = "";
+          }
+          setCurrentUser(user);
+        }
+        if (parsed.users) {
+          const updatedUsers = parsed.users.map((u: User) =>
+            u.role === "admin" ? { ...u, name: "Super Admin", avatar: "" } : u
+          );
+          setUsers(updatedUsers);
+        }
         if (parsed.courses) setCourses(parsed.courses);
         if (parsed.reviews) setReviews(parsed.reviews);
         if (parsed.announcement) setAnnouncement(parsed.announcement);

@@ -98,15 +98,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="hidden w-64 flex-col border-r border-border/70 bg-card/70 p-5 backdrop-blur-md md:flex">
         {/* Admin Profile Header */}
         <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 p-3">
-          <img
-            src={currentUser.avatar}
-            alt={currentUser.name}
-            loading="lazy"
-            decoding="async"
-            className="h-10 w-10 rounded-full border border-purple-500/40 object-cover"
-          />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 font-extrabold text-white text-xs tracking-wider shadow-sm border border-purple-400/30">
+            SA
+          </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold text-foreground">{currentUser.name}</p>
+            <p className="truncate text-sm font-bold text-foreground">Super Admin</p>
             <p className="truncate text-[10px] text-muted-foreground">
               {currentUser.title || "Platform Administrator"}
             </p>

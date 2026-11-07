@@ -215,16 +215,24 @@ export default function AdminUsersPage() {
                     {/* User Profile */}
                     <td className="p-4 pl-6">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={u.avatar}
-                          alt={u.name}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-10 w-10 rounded-full border border-border object-cover"
-                        />
+                        {u.role === "admin" ? (
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 text-xs font-extrabold text-white shadow-sm border border-purple-400/30">
+                            SA
+                          </div>
+                        ) : (
+                          <img
+                            src={u.avatar}
+                            alt={u.name}
+                            loading="lazy"
+                            decoding="async"
+                            className="h-10 w-10 rounded-full border border-border object-cover"
+                          />
+                        )}
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <p className="font-bold text-foreground">{u.name}</p>
+                            <p className="font-bold text-foreground">
+                              {u.role === "admin" ? "Super Admin" : u.name}
+                            </p>
                             {isCurrent && (
                               <span className="rounded-md bg-purple-500/10 px-1.5 py-0.2 text-[9px] font-bold text-purple-600">
                                 YOU
