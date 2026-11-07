@@ -15,7 +15,12 @@ import {
   CheckCircle2,
   Star,
   MessageSquare,
+  UserCheck,
+  Check,
+  X,
+  Clock,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   ResponsiveContainer,
   BarChart,
@@ -35,9 +40,17 @@ const platformGrowthData = [
 ];
 
 export default function AdminDashboard() {
-  const { courses, users, reviews } = useAppStore();
+  const {
+    courses,
+    users,
+    reviews,
+    enrollmentRequests,
+    approveEnrollmentRequest,
+    rejectEnrollmentRequest,
+  } = useAppStore();
 
   const pendingCourses = courses.filter((c) => c.status === "pending_approval");
+  const pendingEnrollments = enrollmentRequests.filter((r) => r.status === "pending");
   const totalTutors = users.filter((u) => u.role === "tutor").length;
   const totalStudents = users.filter((u) => u.role === "student").length;
 
@@ -206,6 +219,84 @@ export default function AdminDashboard() {
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* Student Enrollment Requests Queue */}
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-4">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center border-b border-border/60 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <UserCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-foreground">Student Course Enrollment Requests</h2>
+                {pendingEnrollments.length > 0 && (
+                  <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-extrabold text-amber-700 dark:text-amber-400">
+                    {pendingEnrollments.length} Pending
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Verify and approve student requests before granting course access</p>
+            </div>
+          </div>
+          <Link
+            href="/admin/courses"
+            className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline"
+          >
+            <span>Manage All Courses & Enrollments</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {pendingEnrollments.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-8 text-center text-xs text-muted-foreground">
+            No pending enrollment requests. All learner access requests are up to date!
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {pendingEnrollments.map((req) => (
+              <div
+                key={req.id}
+                className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.02] p-4 flex flex-col justify-between gap-3"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span className="font-bold text-primary uppercase">{req.courseCategory}</span>
+                    <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
+                      <Clock className="h-3 w-3" /> {req.requestedAt}
+                    </span>
+                  </div>
+                  <h4 className="mt-1 font-bold text-foreground text-sm">{req.courseTitle}</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Student: <strong className="text-foreground">{req.studentName}</strong> ({req.studentEmail})
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 border-t border-border/60 pt-3">
+                  <button
+                    onClick={() => {
+                      approveEnrollmentRequest(req.id);
+                      toast.success(`Approved ${req.studentName} for "${req.courseTitle}"!`);
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+                  >
+                    <Check className="h-3.5 w-3.5" /> Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      rejectEnrollmentRequest(req.id);
+                      toast.info(`Rejected request for ${req.studentName}.`);
+                    }}
+                    className="inline-flex items-center justify-center gap-1 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" /> Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent Student Reviews & Ratings Section */}

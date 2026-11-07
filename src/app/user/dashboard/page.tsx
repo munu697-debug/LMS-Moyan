@@ -36,13 +36,23 @@ const studyData = [
 ];
 
 export default function UserDashboard() {
-  const { currentUser, courses } = useAppStore();
+  const { currentUser, courses, enrollmentRequests } = useAppStore();
 
   if (!currentUser) return null;
 
   const enrolledCourseIds = currentUser?.enrolledCourseIds || [];
   const enrolledCourses = courses.filter((c) =>
     enrolledCourseIds.includes(c.id)
+  );
+
+  const pendingRequests = enrollmentRequests.filter(
+    (r) => r.studentId === currentUser?.id && r.status === "pending"
+  );
+  const pendingCourseIdList = Array.from(
+    new Set([...(currentUser?.pendingCourseIds || []), ...pendingRequests.map((r) => r.courseId)])
+  );
+  const pendingCourses = courses.filter(
+    (c) => pendingCourseIdList.includes(c.id) && !enrolledCourseIds.includes(c.id)
   );
 
   const completedLessonCount = currentUser?.completedLessonIds?.length || 0;
@@ -134,6 +144,65 @@ export default function UserDashboard() {
           <p className="mt-1 text-[11px] text-blue-600 font-medium">Top 5% of class</p>
         </div>
       </div>
+
+      {/* Pending Course Approvals Section */}
+      {pendingCourses.length > 0 && (
+        <div className="rounded-3xl border border-amber-500/30 bg-amber-500/[0.04] p-6 shadow-sm space-y-4">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <Clock className="h-5 w-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-foreground">
+                    Enrollment Pending Admin Approval
+                  </h2>
+                  <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                    {pendingCourses.length} Pending
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Your enrollment request has been submitted. Platform admin approval is required before classroom access unlocks.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/courses"
+              className="text-xs font-semibold text-primary hover:underline"
+            >
+              Browse Catalog &rarr;
+            </Link>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {pendingCourses.map((c) => (
+              <div
+                key={c.id}
+                className="rounded-2xl border border-amber-500/20 bg-card p-4 flex flex-col justify-between gap-3 shadow-sm"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span className="font-bold text-primary uppercase text-[10px]">{c.category}</span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                      <Clock className="h-3 w-3 animate-spin" style={{ animationDuration: "4s" }} /> In Review
+                    </span>
+                  </div>
+                  <h4 className="mt-1 font-bold text-foreground text-sm line-clamp-1">{c.title}</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{c.tagline}</p>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-border/60 pt-3 text-xs">
+                  <span className="text-[11px] text-muted-foreground">Instructor: {c.instructor.name}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                    <Clock className="h-3 w-3" /> Awaiting Admin
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Grid: Enrolled Courses & Study Analytics */}
       <div className="grid gap-6 lg:grid-cols-3">

@@ -19,6 +19,8 @@ import {
   Clock,
   DollarSign,
   Film,
+  UserCheck,
+  Check,
 } from "lucide-react";
 import { useAppStore, Course } from "@/lib/store";
 import { toast } from "sonner";
@@ -35,8 +37,11 @@ export default function AdminCoursesPage() {
     createCourse,
     deleteCourse,
     updateCourse,
+    enrollmentRequests,
+    approveEnrollmentRequest,
+    rejectEnrollmentRequest,
   } = useAppStore();
-  const [filter, setFilter] = useState<"all" | "pending_approval" | "published" | "draft">(
+  const [filter, setFilter] = useState<"all" | "pending_approval" | "published" | "draft" | "enrollments">(
     "all"
   );
 
@@ -95,6 +100,16 @@ export default function AdminCoursesPage() {
   const handleReject = (id: string, title: string) => {
     rejectCourse(id);
     toast.info(`"${title}" returned to draft status for instructor revision.`);
+  };
+
+  const handleApproveEnrollment = (reqId: string, studentName: string, courseTitle: string) => {
+    approveEnrollmentRequest(reqId);
+    toast.success(`Approved enrollment for ${studentName} in "${courseTitle}"! Classroom access unlocked. 🎉`);
+  };
+
+  const handleRejectEnrollment = (reqId: string, studentName: string, courseTitle: string) => {
+    rejectEnrollmentRequest(reqId);
+    toast.info(`Enrollment request for ${studentName} in "${courseTitle}" was rejected.`);
   };
 
   const handleAddNewCategory = () => {
@@ -325,7 +340,7 @@ export default function AdminCoursesPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-border/60 pb-3 text-xs font-semibold">
+      <div className="flex flex-wrap gap-2 border-b border-border/60 pb-3 text-xs font-semibold">
         {(["all", "pending_approval", "published", "draft"] as const).map((tab) => {
           const count =
             tab === "all"
@@ -352,22 +367,130 @@ export default function AdminCoursesPage() {
             </button>
           );
         })}
+
+        <button
+          onClick={() => setFilter("enrollments")}
+          className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 transition-all ${
+            filter === "enrollments"
+              ? "bg-amber-600 text-white shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <span>Student Enrollment Requests</span>
+          <span
+            className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+              filter === "enrollments"
+                ? "bg-white/20 text-white"
+                : "bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold"
+            }`}
+          >
+            {enrollmentRequests.filter((r) => r.status === "pending").length}
+          </span>
+        </button>
       </div>
 
-      {/* Courses List */}
-      <div className="space-y-4">
-        {filtered.map((course) => {
-          const isPending = course.status === "pending_approval";
-          return (
-            <div
-              key={course.id}
-              className={`rounded-3xl border bg-card p-6 shadow-sm transition-all hover:border-purple-500/40 ${
-                isPending ? "border-purple-500/50 bg-purple-500/[0.02]" : "border-border"
-              }`}
-            >
-              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
+      {filter === "enrollments" ? (
+        <div className="space-y-4">
+          {enrollmentRequests.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-border p-16 text-center">
+              <UserCheck className="mx-auto h-12 w-12 text-muted-foreground/40" />
+              <h3 className="mt-3 text-base font-bold">No enrollment requests yet</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                When students request enrollment in courses that require approval, they will appear here.
+              </p>
+            </div>
+          ) : (
+            enrollmentRequests.map((req) => (
+              <div
+                key={req.id}
+                className={`rounded-3xl border bg-card p-6 shadow-sm transition-all ${
+                  req.status === "pending"
+                    ? "border-amber-500/50 bg-amber-500/[0.02]"
+                    : "border-border"
+                }`}
+              >
+                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                          req.status === "pending"
+                            ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                            : req.status === "approved"
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {req.status === "pending"
+                          ? "Pending Admin Approval"
+                          : req.status === "approved"
+                          ? "Approved"
+                          : "Rejected"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">• Requested {req.requestedAt}</span>
+                    </div>
+
+                    <h3 className="text-base font-bold text-foreground">
+                      {req.courseTitle}
+                    </h3>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5 font-medium text-foreground">
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        Student: {req.studentName} ({req.studentEmail})
+                      </span>
+                      <span className="font-semibold text-primary">
+                        ${req.coursePrice} • {req.courseCategory}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {req.status === "pending" ? (
+                      <>
+                        <button
+                          onClick={() =>
+                            handleApproveEnrollment(req.id, req.studentName, req.courseTitle)
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 hover:scale-105 transition-all cursor-pointer"
+                        >
+                          <Check className="h-3.5 w-3.5" /> Approve Student
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleRejectEnrollment(req.id, req.studentName, req.courseTitle)
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-2xl border border-border bg-card px-4 py-2.5 text-xs font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-all cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" /> Reject
+                        </button>
+                      </>
+                    ) : (
+                      <span className="rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Status: {req.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        /* Courses List */
+        <div className="space-y-4">
+          {filtered.map((course) => {
+            const isPending = course.status === "pending_approval";
+            return (
+              <div
+                key={course.id}
+                className={`rounded-3xl border bg-card p-6 shadow-sm transition-all hover:border-purple-500/40 ${
+                  isPending ? "border-purple-500/50 bg-purple-500/[0.02]" : "border-border"
+                }`}
+              >
+                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                         course.status === "published"
@@ -462,6 +585,7 @@ export default function AdminCoursesPage() {
           </div>
         )}
       </div>
+    )}
 
       {/* MODAL: Create New Course */}
       {isCreateModalOpen && (

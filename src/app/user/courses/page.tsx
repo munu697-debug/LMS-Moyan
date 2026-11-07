@@ -11,20 +11,34 @@ import {
   Filter,
   ArrowRight,
   CheckCircle,
+  Lock,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 
 export default function UserCoursesPage() {
-  const { currentUser, courses } = useAppStore();
+  const { currentUser, courses, enrollmentRequests } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<"enrolled" | "pending">("enrolled");
 
   const enrolledCourseIds = currentUser?.enrolledCourseIds || [];
   const enrolledCourses = courses.filter((c) =>
     enrolledCourseIds.includes(c.id)
   );
 
-  const filteredCourses = enrolledCourses.filter((c) => {
+  const pendingRequests = enrollmentRequests.filter(
+    (r) => r.studentId === currentUser?.id && r.status === "pending"
+  );
+  const pendingCourseIdList = Array.from(
+    new Set([...(currentUser?.pendingCourseIds || []), ...pendingRequests.map((r) => r.courseId)])
+  );
+  const pendingCourses = courses.filter(
+    (c) => pendingCourseIdList.includes(c.id) && !enrolledCourseIds.includes(c.id)
+  );
+
+  const displayList = activeTab === "enrolled" ? enrolledCourses : pendingCourses;
+
+  const filteredCourses = displayList.filter((c) => {
     const matchesSearch =
       c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -40,10 +54,10 @@ export default function UserCoursesPage() {
             Learning Portfolio
           </span>
           <h1 className="mt-1 text-2xl font-extrabold text-foreground sm:text-3xl">
-            My Enrolled Courses ({enrolledCourses.length})
+            My Courses
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
-            Manage your courses, track lesson completion, and access learning modules.
+            Manage your courses, track lesson completion, and review admin approval status.
           </p>
         </div>
 
@@ -53,6 +67,48 @@ export default function UserCoursesPage() {
         >
           <BookOpen className="h-3.5 w-3.5" /> Explore Catalog
         </Link>
+      </div>
+
+      {/* Tabs: Enrolled vs Pending */}
+      <div className="flex items-center gap-2 border-b border-border/60 pb-3 text-xs font-semibold">
+        <button
+          onClick={() => setActiveTab("enrolled")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all ${
+            activeTab === "enrolled"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <span>Enrolled Courses</span>
+          <span
+            className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+              activeTab === "enrolled" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {enrolledCourses.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("pending")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 transition-all ${
+            activeTab === "pending"
+              ? "bg-amber-600 text-white shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          <span>Pending Admin Approval</span>
+          <span
+            className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+              activeTab === "pending"
+                ? "bg-white/20 text-white"
+                : "bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold"
+            }`}
+          >
+            {pendingCourses.length}
+          </span>
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
@@ -121,28 +177,42 @@ export default function UserCoursesPage() {
                   <h3 className="mt-2 text-base font-bold text-foreground leading-snug">{c.title}</h3>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{c.tagline}</p>
 
-                  <div className="mt-4 space-y-1">
-                    <div className="flex items-center justify-between text-[11px] font-semibold">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="text-primary">{progressPct}%</span>
+                  {activeTab === "enrolled" ? (
+                    <div className="mt-4 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-semibold">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="text-primary">{progressPct}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full bg-gradient-primary"
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full rounded-full bg-gradient-primary"
-                        style={{ width: `${progressPct}%` }}
-                      />
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                      <Clock className="h-4 w-4 shrink-0 animate-pulse text-amber-500" />
+                      <span className="text-[11px] font-medium">Awaiting administrator verification & approval</span>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
               <div className="border-t border-border/60 bg-muted/30 p-4">
-                <Link
-                  href={`/user/learn/${c.id}`}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-transform hover:scale-[1.02]"
-                >
-                  <PlayCircle className="h-3.5 w-3.5" /> Continue Course
-                </Link>
+                {activeTab === "enrolled" ? (
+                  <Link
+                    href={`/user/learn/${c.id}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground transition-transform hover:scale-[1.02]"
+                  >
+                    <PlayCircle className="h-3.5 w-3.5" /> Continue Course
+                  </Link>
+                ) : (
+                  <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 py-2.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                    <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: "5s" }} />
+                    <span>Pending Admin Approval</span>
+                  </div>
+                )}
               </div>
             </div>
           );

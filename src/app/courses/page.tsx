@@ -13,15 +13,25 @@ import {
   ArrowRight,
   PlayCircle,
   Sparkles,
+  X,
+  Lock,
+  LayoutDashboard,
 } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, Course } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function CoursesCatalogPage() {
-  const { courses, categories: storeCategories, currentUser, enrollInCourse } = useAppStore();
+  const {
+    courses,
+    categories: storeCategories,
+    currentUser,
+    requestEnrollment,
+    enrollmentRequests,
+  } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLevel, setSelectedLevel] = useState("all");
+  const [pendingModalCourse, setPendingModalCourse] = useState<Course | null>(null);
 
   const publishedCourses = courses.filter((c) => c.status === "published");
 
@@ -41,9 +51,16 @@ export default function CoursesCatalogPage() {
     return matchesSearch && matchesCat && matchesLevel;
   });
 
-  const handleEnroll = (courseId: string, courseTitle: string) => {
-    enrollInCourse(courseId);
-    toast.success(`Enrolled in "${courseTitle}"! Welcome to the classroom. 🎉`);
+  const handleEnrollRequest = (course: Course) => {
+    const res = requestEnrollment(course.id);
+    if (res.success) {
+      setPendingModalCourse(course);
+      toast.info(`Enrollment request submitted for "${course.title}". Awaiting admin approval.`);
+    } else if (res.requiresAuth) {
+      toast.error("Please sign in to request enrollment.");
+    } else {
+      toast.warning(res.message || "Could not submit enrollment request.");
+    }
   };
 
   return (
@@ -112,6 +129,11 @@ export default function CoursesCatalogPage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((course) => {
           const isEnrolled = currentUser?.enrolledCourseIds?.includes(course.id) ?? false;
+          const isPending =
+            (currentUser?.pendingCourseIds?.includes(course.id) ?? false) ||
+            enrollmentRequests.some(
+              (r) => r.studentId === currentUser?.id && r.courseId === course.id && r.status === "pending"
+            );
           return (
             <div
               key={course.id}
@@ -174,10 +196,26 @@ export default function CoursesCatalogPage() {
                   >
                     <PlayCircle className="h-4 w-4" /> Go to Classroom
                   </Link>
+                ) : isPending ? (
+                  <>
+                    <button
+                      onClick={() => setPendingModalCourse(course)}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-amber-500/40 bg-amber-500/10 py-3 text-xs font-bold text-amber-700 dark:text-amber-400 shadow-sm transition-transform hover:scale-[1.02]"
+                    >
+                      <Clock className="h-4 w-4 animate-spin text-amber-500" style={{ animationDuration: "5s" }} />
+                      <span>Pending Approval</span>
+                    </button>
+                    <Link
+                      href={`/user/learn/${course.id}`}
+                      className="rounded-2xl border border-border bg-card px-4 py-3 text-xs font-bold text-foreground hover:bg-muted"
+                    >
+                      Preview
+                    </Link>
+                  </>
                 ) : (
                   <>
                     <button
-                      onClick={() => handleEnroll(course.id, course.title)}
+                      onClick={() => handleEnrollRequest(course)}
                       className="flex-1 rounded-2xl bg-gradient-primary py-3 text-xs font-bold text-primary-foreground shadow-elegant transition-transform hover:scale-[1.02]"
                     >
                       Enroll in Course
@@ -205,6 +243,94 @@ export default function CoursesCatalogPage() {
           </div>
         )}
       </div>
+
+      {/* Pending Approval Popup Modal */}
+      {pendingModalCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 space-y-6">
+            {/* Close button */}
+            <button
+              onClick={() => setPendingModalCourse(null)}
+              className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Icon Header */}
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <Clock className="h-6 w-6 animate-pulse" />
+              </div>
+              <div>
+                <span className="inline-block rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                  Pending Admin Approval
+                </span>
+                <h3 className="text-xl font-extrabold text-foreground">
+                  Enrollment Request Submitted
+                </h3>
+              </div>
+            </div>
+
+            {/* Course Summary Box */}
+            <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="font-bold text-primary uppercase text-[11px]">
+                  {pendingModalCourse.category}
+                </span>
+                <span>{pendingModalCourse.duration}</span>
+              </div>
+              <h4 className="font-bold text-foreground text-sm sm:text-base">
+                {pendingModalCourse.title}
+              </h4>
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {pendingModalCourse.tagline}
+              </p>
+            </div>
+
+            {/* Progress Checklist */}
+            <div className="space-y-3 rounded-2xl border border-border/60 bg-background/50 p-4">
+              <h5 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Approval Flow
+              </h5>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span className="font-semibold">1. Request submitted by learner</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
+                  <Clock className="h-4 w-4 shrink-0 animate-spin" style={{ animationDuration: "5s" }} />
+                  <span className="font-semibold">2. Waiting for platform admin review & approval</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-muted-foreground">
+                  <Lock className="h-4 w-4 shrink-0" />
+                  <span>3. Full classroom & AI Tutor unlocked upon approval</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Your enrollment request has been registered. You can monitor the approval status anytime from your <strong>Student Dashboard</strong>.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center pt-2">
+              <button
+                onClick={() => setPendingModalCourse(null)}
+                className="flex-1 rounded-2xl border border-border bg-card py-3 text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              >
+                Continue Browsing
+              </button>
+              <Link
+                href="/user/dashboard"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-primary py-3 text-xs font-bold text-primary-foreground shadow-elegant hover:scale-[1.02] transition-transform"
+              >
+                <LayoutDashboard className="h-4 w-4" /> Go to Dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

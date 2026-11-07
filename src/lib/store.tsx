@@ -82,6 +82,7 @@ export interface User {
   bio?: string;
   status: "active" | "suspended";
   enrolledCourseIds: string[];
+  pendingCourseIds?: string[];
   completedLessonIds: string[];
   streakDays: number;
   quizScores: Record<string, number>;
@@ -102,6 +103,19 @@ export interface SubmissionReview {
   status: "pending" | "graded";
   grade?: number;
   feedback?: string;
+}
+
+export interface EnrollmentRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  courseId: string;
+  courseTitle: string;
+  courseCategory: string;
+  coursePrice: number;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
 }
 
 const INITIAL_CATEGORIES: string[] = [
@@ -316,7 +330,8 @@ const INITIAL_USERS: User[] = [
     title: "Curious Learner & Software Engineer",
     bio: "Passionate about generative models, full-stack architectures, and AI-assisted workflows.",
     status: "active",
-    enrolledCourseIds: ["course-1", "course-2"],
+    enrolledCourseIds: ["course-1"],
+    pendingCourseIds: [],
     completedLessonIds: ["l1-1"],
     streakDays: 7,
     quizScores: {
@@ -410,6 +425,7 @@ interface AppContextType {
   courses: Course[];
   categories: string[];
   reviews: SubmissionReview[];
+  enrollmentRequests: EnrollmentRequest[];
   announcement: { message: string; active: boolean; type: "info" | "warning" | "success" };
   // Auth Actions
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
@@ -418,6 +434,9 @@ interface AppContextType {
   logout: () => Promise<void>;
   // Core Actions
   enrollInCourse: (courseId: string) => void;
+  requestEnrollment: (courseId: string) => { success: boolean; requiresAuth?: boolean; message?: string };
+  approveEnrollmentRequest: (requestId: string) => void;
+  rejectEnrollmentRequest: (requestId: string) => void;
   toggleLessonCompletion: (courseId: string, lessonId: string) => void;
   submitQuizScore: (courseId: string, score: number) => void;
   createCourse: (course: Omit<Course, "id" | "rating" | "reviewCount" | "enrolledCount">) => void;
@@ -454,6 +473,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
   const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
   const [reviews, setReviews] = useState<SubmissionReview[]>(INITIAL_REVIEWS);
+  const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>([]);
   const [announcement, setAnnouncement] = useState<{
     message: string;
     active: boolean;
@@ -491,6 +511,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCategories(Array.from(new Set([...INITIAL_CATEGORIES, ...parsed.categories])));
         }
         if (parsed.reviews) setReviews(parsed.reviews);
+        if (parsed.enrollmentRequests && Array.isArray(parsed.enrollmentRequests)) {
+          setEnrollmentRequests(parsed.enrollmentRequests);
+        }
         if (parsed.announcement) setAnnouncement(parsed.announcement);
       }
     } catch (e) {
@@ -505,12 +528,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ isAuthenticated, currentUser, users, courses, categories, reviews, announcement })
+        JSON.stringify({ isAuthenticated, currentUser, users, courses, categories, reviews, enrollmentRequests, announcement })
       );
     } catch (e) {
       console.warn("Failed to persist state:", e);
     }
-  }, [isAuthenticated, currentUser, users, courses, categories, reviews, announcement, isHydrated]);
+  }, [isAuthenticated, currentUser, users, courses, categories, reviews, enrollmentRequests, announcement, isHydrated]);
 
   // Sync Firebase auth state
   useEffect(() => {
@@ -757,9 +780,151 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return u;
       })
     );
+    setCurrentUser((prev) => {
+      if (!prev || prev.enrolledCourseIds.includes(courseId)) return prev;
+      return { ...prev, enrolledCourseIds: [...prev.enrolledCourseIds, courseId] };
+    });
     setCourses((prev) =>
       prev.map((c) => (c.id === courseId ? { ...c, enrolledCount: c.enrolledCount + 1 } : c))
     );
+  };
+
+  const requestEnrollment = (courseId: string): { success: boolean; requiresAuth?: boolean; message?: string } => {
+    let student = currentUser;
+    if (!student) {
+      // Auto-fallback to demo student if not logged in
+      const defaultStudent = users.find((u) => u.role === "student") || users[0];
+      if (defaultStudent) {
+        student = defaultStudent;
+        setCurrentUser(defaultStudent);
+        setIsAuthenticated(true);
+      } else {
+        return { success: false, requiresAuth: true, message: "Please log in to enroll." };
+      }
+    }
+
+    const targetCourse = courses.find((c) => c.id === courseId);
+    if (!targetCourse) {
+      return { success: false, message: "Course not found." };
+    }
+
+    if (student.enrolledCourseIds?.includes(courseId)) {
+      return { success: false, message: "You are already enrolled in this course." };
+    }
+
+    const currentPending = student.pendingCourseIds || [];
+    const isAlreadyPending =
+      currentPending.includes(courseId) ||
+      enrollmentRequests.some(
+        (r) => r.studentId === student!.id && r.courseId === courseId && r.status === "pending"
+      );
+
+    if (isAlreadyPending) {
+      return { success: true, message: "Enrollment request is already pending admin approval." };
+    }
+
+    const newRequest: EnrollmentRequest = {
+      id: `enr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      studentId: student.id,
+      studentName: student.name,
+      studentEmail: student.email,
+      courseId: targetCourse.id,
+      courseTitle: targetCourse.title,
+      courseCategory: targetCourse.category,
+      coursePrice: targetCourse.price,
+      status: "pending",
+      requestedAt: new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setEnrollmentRequests((prev) => [newRequest, ...prev]);
+
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === student!.id) {
+          const updatedPending = Array.from(new Set([...(u.pendingCourseIds || []), courseId]));
+          return { ...u, pendingCourseIds: updatedPending };
+        }
+        return u;
+      })
+    );
+
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      const updatedPending = Array.from(new Set([...(prev.pendingCourseIds || []), courseId]));
+      return { ...prev, pendingCourseIds: updatedPending };
+    });
+
+    return { success: true, message: "Enrollment request submitted for admin approval." };
+  };
+
+  const approveEnrollmentRequest = (requestId: string) => {
+    const req = enrollmentRequests.find((r) => r.id === requestId);
+    if (!req) return;
+
+    setEnrollmentRequests((prev) =>
+      prev.map((r) => (r.id === requestId ? { ...r, status: "approved" as const } : r))
+    );
+
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === req.studentId) {
+          const enrolled = u.enrolledCourseIds.includes(req.courseId)
+            ? u.enrolledCourseIds
+            : [...u.enrolledCourseIds, req.courseId];
+          const pending = (u.pendingCourseIds || []).filter((id) => id !== req.courseId);
+          return { ...u, enrolledCourseIds: enrolled, pendingCourseIds: pending };
+        }
+        return u;
+      })
+    );
+
+    setCurrentUser((prev) => {
+      if (prev && prev.id === req.studentId) {
+        const enrolled = prev.enrolledCourseIds.includes(req.courseId)
+          ? prev.enrolledCourseIds
+          : [...prev.enrolledCourseIds, req.courseId];
+        const pending = (prev.pendingCourseIds || []).filter((id) => id !== req.courseId);
+        return { ...prev, enrolledCourseIds: enrolled, pendingCourseIds: pending };
+      }
+      return prev;
+    });
+
+    setCourses((prev) =>
+      prev.map((c) => (c.id === req.courseId ? { ...c, enrolledCount: c.enrolledCount + 1 } : c))
+    );
+  };
+
+  const rejectEnrollmentRequest = (requestId: string) => {
+    const req = enrollmentRequests.find((r) => r.id === requestId);
+    if (!req) return;
+
+    setEnrollmentRequests((prev) =>
+      prev.map((r) => (r.id === requestId ? { ...r, status: "rejected" as const } : r))
+    );
+
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === req.studentId) {
+          const pending = (u.pendingCourseIds || []).filter((id) => id !== req.courseId);
+          return { ...u, pendingCourseIds: pending };
+        }
+        return u;
+      })
+    );
+
+    setCurrentUser((prev) => {
+      if (prev && prev.id === req.studentId) {
+        const pending = (prev.pendingCourseIds || []).filter((id) => id !== req.courseId);
+        return { ...prev, pendingCourseIds: pending };
+      }
+      return prev;
+    });
   };
 
   const toggleLessonCompletion = (courseId: string, lessonId: string) => {
@@ -975,12 +1140,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         courses,
         categories,
         reviews,
+        enrollmentRequests,
         announcement,
         login,
         loginWithGoogle,
         signup,
         logout,
         enrollInCourse,
+        requestEnrollment,
+        approveEnrollmentRequest,
+        rejectEnrollmentRequest,
         toggleLessonCompletion,
         submitQuizScore,
         createCourse,

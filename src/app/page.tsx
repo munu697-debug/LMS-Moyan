@@ -71,14 +71,6 @@ export default function HomePage() {
         />
 
         <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-16 text-center">
-          {/* Quick pill tag */}
-          <div
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Next.js Architecture + Gemini 2.0 AI Core</span>
-          </div>
-
           <h1 className="mx-auto max-w-4xl text-5xl font-extrabold leading-[1.05] tracking-tight md:text-7xl">
             {"Learn anything,".split(" ").map((w, i) => (
               <motion.span
@@ -475,7 +467,6 @@ export default function HomePage() {
             <Link href="/courses" className="hover:text-primary">Courses</Link>
             <Link href="/user/dashboard" className="hover:text-primary">Student</Link>
             <Link href="/tutor/dashboard" className="hover:text-primary">Tutor</Link>
-            <Link href="/admin/dashboard" className="hover:text-primary">Admin</Link>
           </div>
         </div>
       </footer>

@@ -19,6 +19,7 @@ import {
   Zap,
   Trophy,
   Share2,
+  Clock,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
@@ -29,7 +30,14 @@ interface PageProps {
 
 export default function LearnCoursePage({ params }: PageProps) {
   const { courseId } = use(params);
-  const { courses, currentUser, toggleLessonCompletion, enrollInCourse } = useAppStore();
+  const {
+    courses,
+    currentUser,
+    toggleLessonCompletion,
+    enrollInCourse,
+    enrollmentRequests,
+    requestEnrollment,
+  } = useAppStore();
 
   const course = courses.find((c) => c.id === courseId);
 
@@ -45,8 +53,13 @@ export default function LearnCoursePage({ params }: PageProps) {
     );
   }
 
-  // Ensure student is enrolled for demo smoothness
+  // Enrollment checks
   const isEnrolled = currentUser?.enrolledCourseIds?.includes(course.id) || false;
+  const isPending =
+    (currentUser?.pendingCourseIds?.includes(course.id) ?? false) ||
+    enrollmentRequests.some(
+      (r) => r.studentId === currentUser?.id && r.courseId === course.id && r.status === "pending"
+    );
 
   // Active lesson state
   const firstLesson = course.modules[0]?.lessons[0];
@@ -110,7 +123,8 @@ export default function LearnCoursePage({ params }: PageProps) {
 
   const handleToggleCompletion = () => {
     if (!isEnrolled) {
-      enrollInCourse(course.id);
+      toast.warning("Classroom is in preview mode. Lesson progress tracking unlocks once approved by administrator.");
+      return;
     }
     toggleLessonCompletion(course.id, activeLessonId);
     if (!isCompleted) {
@@ -131,17 +145,25 @@ export default function LearnCoursePage({ params }: PageProps) {
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
         </Link>
         <div className="flex items-center gap-2">
-          {!isEnrolled && (
+          {isPending ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-400">
+              <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: "5s" }} /> Pending Admin Approval
+            </span>
+          ) : !isEnrolled ? (
             <button
               onClick={() => {
-                enrollInCourse(course.id);
-                toast.success("Enrolled in course!");
+                const res = requestEnrollment(course.id);
+                if (res.success) {
+                  toast.info(`Enrollment request submitted for "${course.title}". Awaiting admin approval.`);
+                } else {
+                  toast.warning(res.message || "Could not submit enrollment request.");
+                }
               }}
-              className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground"
+              className="rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-primary-foreground shadow-sm hover:scale-105 transition-transform"
             >
-              Enroll in this course
+              Request Enrollment
             </button>
-          )}
+          ) : null}
           <Link
             href="/user/quizzes"
             className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-bold text-primary shadow-sm hover:border-primary/40"
