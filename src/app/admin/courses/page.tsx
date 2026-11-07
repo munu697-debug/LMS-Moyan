@@ -59,8 +59,26 @@ export default function AdminCoursesPage() {
   const [newInstructorId, setNewInstructorId] = useState<string>(
     users.find((u) => u.role === "tutor")?.id || currentUser?.id || ""
   );
-  const [newLessonTitle, setNewLessonTitle] = useState("Foundations & Core Architecture");
-  const [newVideoUrl, setNewVideoUrl] = useState("https://www.youtube.com/embed/jC4v5AS4RIM");
+  // Dynamic Modules & Lessons State
+  const [courseModules, setCourseModules] = useState<
+    {
+      id: string;
+      title: string;
+      lessons: { id: string; title: string; videoUrl: string }[];
+    }[]
+  >([
+    {
+      id: "m-1",
+      title: "Module 1: Foundations & Core Architecture",
+      lessons: [
+        {
+          id: "l-1",
+          title: "Introduction & Environment Setup",
+          videoUrl: "https://www.youtube.com/embed/jC4v5AS4RIM",
+        },
+      ],
+    },
+  ]);
 
   const instructors = users.filter((u) => u.role === "tutor" || u.role === "admin");
 
@@ -90,6 +108,100 @@ export default function AdminCoursesPage() {
     setCustomCategoryInput("");
     setIsAddingCustomCategory(false);
     toast.success(`Category "${cat}" added successfully! ✨`);
+  };
+
+  // Module & Lesson Handlers
+  const handleAddModule = () => {
+    const nextIdx = courseModules.length + 1;
+    setCourseModules((prev) => [
+      ...prev,
+      {
+        id: `m-${Date.now()}-${nextIdx}`,
+        title: `Module ${nextIdx}: Advanced Implementation`,
+        lessons: [
+          {
+            id: `l-${Date.now()}-1`,
+            title: `Key Principles & Practical Walkthrough`,
+            videoUrl: "https://www.youtube.com/embed/aircAruvnKk",
+          },
+        ],
+      },
+    ]);
+  };
+
+  const handleRemoveModule = (modIdx: number) => {
+    if (courseModules.length <= 1) {
+      toast.error("A course must have at least one module.");
+      return;
+    }
+    setCourseModules((prev) => prev.filter((_, idx) => idx !== modIdx));
+  };
+
+  const handleUpdateModuleTitle = (modIdx: number, title: string) => {
+    setCourseModules((prev) =>
+      prev.map((m, idx) => (idx === modIdx ? { ...m, title } : m))
+    );
+  };
+
+  const handleAddLesson = (modIdx: number) => {
+    setCourseModules((prev) =>
+      prev.map((m, idx) => {
+        if (idx === modIdx) {
+          const nextLessonNum = m.lessons.length + 1;
+          return {
+            ...m,
+            lessons: [
+              ...m.lessons,
+              {
+                id: `l-${Date.now()}-${nextLessonNum}`,
+                title: `Lesson ${nextLessonNum}: Hands-on Deep Dive`,
+                videoUrl: "https://www.youtube.com/embed/5qap5aO4i9A",
+              },
+            ],
+          };
+        }
+        return m;
+      })
+    );
+  };
+
+  const handleRemoveLesson = (modIdx: number, lessonIdx: number) => {
+    setCourseModules((prev) =>
+      prev.map((m, idx) => {
+        if (idx === modIdx) {
+          if (m.lessons.length <= 1) {
+            toast.error("Each module must have at least one lesson.");
+            return m;
+          }
+          return {
+            ...m,
+            lessons: m.lessons.filter((_, lIdx) => lIdx !== lessonIdx),
+          };
+        }
+        return m;
+      })
+    );
+  };
+
+  const handleUpdateLesson = (
+    modIdx: number,
+    lessonIdx: number,
+    field: "title" | "videoUrl",
+    val: string
+  ) => {
+    setCourseModules((prev) =>
+      prev.map((m, idx) => {
+        if (idx === modIdx) {
+          return {
+            ...m,
+            lessons: m.lessons.map((l, lIdx) =>
+              lIdx === lessonIdx ? { ...l, [field]: val } : l
+            ),
+          };
+        }
+        return m;
+      })
+    );
   };
 
   const handleTogglePublish = (course: Course) => {
@@ -124,6 +236,19 @@ export default function AdminCoursesPage() {
       avatar: selectedInstructorUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     };
 
+    const formattedModules = courseModules.map((m, mIdx) => ({
+      id: m.id || `mod-${Date.now()}-${mIdx}`,
+      title: m.title.trim() || `Module ${mIdx + 1}`,
+      lessons: m.lessons.map((l, lIdx) => ({
+        id: l.id || `l-${Date.now()}-${mIdx}-${lIdx}`,
+        title: l.title.trim() || `Lesson ${lIdx + 1}`,
+        duration: "18:20",
+        videoUrl: l.videoUrl.trim() || "https://www.youtube.com/embed/jC4v5AS4RIM",
+        summary: `Practical lesson on ${l.title}`,
+        content: `Welcome to this course module. Review the video instructions and explore the real-time AI tutor dock on the right.`,
+      })),
+    }));
+
     createCourse({
       title: newTitle.trim(),
       tagline: newTagline.trim() || "Master high-impact skills with adaptive AI tutoring.",
@@ -134,22 +259,7 @@ export default function AdminCoursesPage() {
       duration: newDuration,
       status: "published",
       instructor: instructorObj,
-      modules: [
-        {
-          id: `mod-${Date.now()}-1`,
-          title: "Module 1: Core Principles & Setup",
-          lessons: [
-            {
-              id: `l-${Date.now()}-1`,
-              title: newLessonTitle || "Introduction & Setup",
-              duration: "18:20",
-              videoUrl: newVideoUrl || "https://www.youtube.com/embed/jC4v5AS4RIM",
-              summary: "Foundational concepts, essential setup, and workflow overview.",
-              content: "Welcome to this course module. Review the video instructions and explore the real-time AI tutor dock on the right.",
-            },
-          ],
-        },
-      ],
+      modules: formattedModules,
       quiz: [
         {
           id: `q-${Date.now()}-1`,
@@ -166,13 +276,26 @@ export default function AdminCoursesPage() {
       ],
     });
 
-    toast.success(`Course "${newTitle}" created and published to the live catalog! 🚀`);
+    toast.success(`Course "${newTitle}" with ${formattedModules.length} module(s) created & published! 🚀`);
     setIsCreateModalOpen(false);
     // Reset fields
     setNewTitle("");
     setNewTagline("");
     setNewDescription("");
     setNewPrice(49);
+    setCourseModules([
+      {
+        id: "m-1",
+        title: "Module 1: Foundations & Core Architecture",
+        lessons: [
+          {
+            id: "l-1",
+            title: "Introduction & Environment Setup",
+            videoUrl: "https://www.youtube.com/embed/jC4v5AS4RIM",
+          },
+        ],
+      },
+    ]);
   };
 
   return (
@@ -498,31 +621,117 @@ export default function AdminCoursesPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <Film className="h-4 w-4 text-purple-600" />
-                  <span>Module 1 & Initial Video Lesson</span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="text-[11px] font-semibold text-muted-foreground">Lesson Title</label>
-                    <input
-                      type="text"
-                      value={newLessonTitle}
-                      onChange={(e) => setNewLessonTitle(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-input bg-background p-2 text-xs outline-none focus:border-purple-600"
-                    />
+              {/* Curriculum Modules & Lessons Section */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Film className="h-4 w-4 text-purple-600" />
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      Curriculum Modules ({courseModules.length}) & Lessons ({courseModules.flatMap((m) => m.lessons).length})
+                    </h3>
                   </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-muted-foreground">Video Embed URL (YouTube/Vimeo)</label>
-                    <input
-                      type="text"
-                      value={newVideoUrl}
-                      onChange={(e) => setNewVideoUrl(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-input bg-background p-2 text-xs outline-none focus:border-purple-600"
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddModule}
+                    className="inline-flex items-center gap-1 rounded-xl bg-purple-600/10 border border-purple-500/30 px-3 py-1.5 text-xs font-bold text-purple-600 hover:bg-purple-600/20 transition-all cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> + Add Another Module
+                  </button>
                 </div>
+
+                {courseModules.map((module, modIdx) => (
+                  <div key={module.id} className="rounded-2xl border border-border bg-muted/40 p-4 space-y-3">
+                    {/* Module Header Bar */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-1 items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-[10px] font-extrabold text-white">
+                          {modIdx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={module.title}
+                          onChange={(e) => handleUpdateModuleTitle(modIdx, e.target.value)}
+                          placeholder={`Module ${modIdx + 1} Title...`}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-1.5 text-xs font-bold text-foreground outline-none focus:border-purple-600"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleAddLesson(modIdx)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-[11px] font-bold text-purple-600 hover:bg-purple-500/20"
+                          title="Add lesson to this module"
+                        >
+                          <Plus className="h-3 w-3" /> Lesson
+                        </button>
+                        {courseModules.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveModule(modIdx)}
+                            className="rounded-lg border border-rose-500/30 p-1 text-rose-600 hover:bg-rose-500/10"
+                            title="Remove module"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Lessons inside Module */}
+                    <div className="space-y-2.5 pl-2 sm:pl-4 border-l-2 border-purple-500/30">
+                      {module.lessons.map((lesson, lessonIdx) => (
+                        <div
+                          key={lesson.id}
+                          className="grid grid-cols-1 gap-2 sm:grid-cols-12 items-center rounded-xl bg-background/90 p-2.5 border border-border/60"
+                        >
+                          <div className="sm:col-span-5">
+                            <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                              Lesson {lessonIdx + 1} Title
+                            </label>
+                            <input
+                              type="text"
+                              value={lesson.title}
+                              onChange={(e) =>
+                                handleUpdateLesson(modIdx, lessonIdx, "title", e.target.value)
+                              }
+                              placeholder="e.g. Core Architecture Setup"
+                              className="w-full rounded-lg border border-input bg-background p-1.5 text-xs outline-none focus:border-purple-600"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-6">
+                            <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                              Video Embed URL (YouTube/Vimeo)
+                            </label>
+                            <input
+                              type="text"
+                              value={lesson.videoUrl}
+                              onChange={(e) =>
+                                handleUpdateLesson(modIdx, lessonIdx, "videoUrl", e.target.value)
+                              }
+                              placeholder="https://www.youtube.com/embed/..."
+                              className="w-full rounded-lg border border-input bg-background p-1.5 text-xs font-mono outline-none focus:border-purple-600"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-1 flex justify-end pt-2 sm:pt-0">
+                            {module.lessons.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveLesson(modIdx, lessonIdx)}
+                                className="p-1 text-rose-500 hover:bg-rose-500/10 rounded-md"
+                                title="Remove lesson"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-border/60">
