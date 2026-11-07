@@ -13,6 +13,8 @@ import {
   Server,
   Activity,
   CheckCircle2,
+  Star,
+  MessageSquare,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -203,6 +205,76 @@ export default function AdminDashboard() {
               Manage Course Approvals &rarr;
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* Recent Student Reviews & Ratings Section */}
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm space-y-5">
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center border-b border-border/60 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500/10 text-amber-500">
+              <Star className="h-5 w-5 fill-amber-500" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-foreground">Recent Student Reviews & Ratings</h2>
+              <p className="text-xs text-muted-foreground">4.9 ★ average rating across 1,480+ enrolled learners</p>
+            </div>
+          </div>
+          <Link
+            href="/admin/reviews"
+            className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline"
+          >
+            <span>View All Reviews</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {[
+            {
+              name: "Alex Chen",
+              role: "Prompt Engineering Mastery",
+              quote: "The Gemini AI tutor dock is unmatched. The assistant broke down token probability distributions in seconds!",
+              avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+            },
+            {
+              name: "Aisha Khan",
+              role: "Machine Learning Foundations",
+              quote: "Loss surfaces and momentum optimizers made concepts click that 3 textbooks couldn't explain. Verified cert is on my LinkedIn!",
+              avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+            },
+            {
+              name: "Rahul Mehta",
+              role: "Gemini API Production Apps",
+              quote: "Lessons on multi-turn function calling and structured outputs gave our team the blueprint for our production AI agent.",
+              avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+            },
+          ].map((r, i) => (
+            <div key={i} className="rounded-2xl border border-border bg-muted/30 p-4 space-y-3 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <Star key={idx} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-xs text-foreground italic leading-relaxed">
+                  "{r.quote}"
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-2 border-t border-border/60">
+                <img
+                  src={r.avatar}
+                  alt={r.name}
+                  className="h-8 w-8 rounded-full border border-border object-cover"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-foreground">{r.name}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">{r.role}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -732,6 +732,15 @@ export default function AdminCoursesPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* Big Prominent Add Another Module Button */}
+                <button
+                  type="button"
+                  onClick={handleAddModule}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-purple-500/50 bg-purple-500/5 py-3.5 text-xs font-bold text-purple-600 hover:bg-purple-500/10 hover:border-purple-600 transition-all cursor-pointer shadow-sm"
+                >
+                  <Plus className="h-4 w-4" /> + Add Another Module (Module {courseModules.length + 1})
+                </button>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-border/60">

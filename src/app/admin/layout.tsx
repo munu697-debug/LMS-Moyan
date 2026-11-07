@@ -12,6 +12,8 @@ import {
   Sliders,
   LogIn,
   Activity,
+  MessageSquare,
+  Star,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 
@@ -89,6 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       badge: pendingCoursesCount,
     },
     { label: "User Management", href: "/admin/users", icon: Users, badge: users.length },
+    { label: "User Reviews", href: "/admin/reviews", icon: MessageSquare },
     { label: "System Settings", href: "/admin/settings", icon: Sliders },
   ];
 
