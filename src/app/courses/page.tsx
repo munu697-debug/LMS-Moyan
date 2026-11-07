@@ -18,7 +18,7 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function CoursesCatalogPage() {
-  const { courses, currentUser, enrollInCourse } = useAppStore();
+  const { courses, categories: storeCategories, currentUser, enrollInCourse } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLevel, setSelectedLevel] = useState("all");
@@ -27,10 +27,7 @@ export default function CoursesCatalogPage() {
 
   const categories = [
     "all",
-    "Generative AI",
-    "Data Science",
-    "Web Dev & AI",
-    "UI Design",
+    ...Array.from(new Set([...(storeCategories || []), ...publishedCourses.map((c) => c.category)])),
   ];
 
   const filtered = publishedCourses.filter((c) => {

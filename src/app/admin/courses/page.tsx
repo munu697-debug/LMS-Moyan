@@ -24,7 +24,18 @@ import { useAppStore, Course } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function AdminCoursesPage() {
-  const { courses, users, currentUser, approveCourse, rejectCourse, createCourse, deleteCourse, updateCourse } = useAppStore();
+  const {
+    courses,
+    categories,
+    addCategory,
+    users,
+    currentUser,
+    approveCourse,
+    rejectCourse,
+    createCourse,
+    deleteCourse,
+    updateCourse,
+  } = useAppStore();
   const [filter, setFilter] = useState<"all" | "pending_approval" | "published" | "draft">(
     "all"
   );
@@ -32,6 +43,10 @@ export default function AdminCoursesPage() {
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+
+  // New Category State
+  const [isAddingCustomCategory, setIsAddingCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
 
   // New Course Form State
   const [newTitle, setNewTitle] = useState("");
@@ -62,6 +77,19 @@ export default function AdminCoursesPage() {
   const handleReject = (id: string, title: string) => {
     rejectCourse(id);
     toast.info(`"${title}" returned to draft status for instructor revision.`);
+  };
+
+  const handleAddNewCategory = () => {
+    if (!customCategoryInput.trim()) {
+      toast.error("Please enter a category name.");
+      return;
+    }
+    const cat = customCategoryInput.trim();
+    addCategory(cat);
+    setNewCategory(cat);
+    setCustomCategoryInput("");
+    setIsAddingCustomCategory(false);
+    toast.success(`Category "${cat}" added successfully! ✨`);
   };
 
   const handleTogglePublish = (course: Course) => {
@@ -360,19 +388,61 @@ export default function AdminCoursesPage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground">Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-purple-600"
-                  >
-                    <option value="Generative AI">Generative AI</option>
-                    <option value="Data Science">Data Science</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="UI/UX Design">UI/UX Design</option>
-                    <option value="Cloud Architecture">Cloud Architecture</option>
-                    <option value="Productivity">Productivity</option>
-                  </select>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-foreground">Category</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCustomCategory(!isAddingCustomCategory)}
+                      className="text-[10px] font-bold text-purple-600 hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" /> {isAddingCustomCategory ? "Choose Existing" : "+ New Category"}
+                    </button>
+                  </div>
+
+                  {isAddingCustomCategory ? (
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={customCategoryInput}
+                        onChange={(e) => setCustomCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddNewCategory();
+                          }
+                        }}
+                        placeholder="e.g. Cybersecurity"
+                        className="w-full rounded-2xl border border-purple-600 bg-background px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-purple-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewCategory}
+                        className="rounded-2xl bg-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-purple-700 shrink-0"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={newCategory}
+                      onChange={(e) => {
+                        if (e.target.value === "__add_new__") {
+                          setIsAddingCustomCategory(true);
+                        } else {
+                          setNewCategory(e.target.value);
+                        }
+                      }}
+                      className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-purple-600"
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                      <option value="__add_new__">+ Add New Category...</option>
+                    </select>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

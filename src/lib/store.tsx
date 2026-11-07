@@ -104,6 +104,17 @@ export interface SubmissionReview {
   feedback?: string;
 }
 
+const INITIAL_CATEGORIES: string[] = [
+  "Generative AI",
+  "Data Science",
+  "Web Development",
+  "UI/UX Design",
+  "Cloud Architecture",
+  "Productivity",
+  "Cybersecurity",
+  "Mobile Development",
+];
+
 const INITIAL_COURSES: Course[] = [
   {
     id: "course-1",
@@ -397,6 +408,7 @@ interface AppContextType {
   setCurrentRole: (role: UserRole) => void;
   users: User[];
   courses: Course[];
+  categories: string[];
   reviews: SubmissionReview[];
   announcement: { message: string; active: boolean; type: "info" | "warning" | "success" };
   // Auth Actions
@@ -426,6 +438,7 @@ interface AppContextType {
   }) => { success: boolean; error?: string };
   deleteUser: (userId: string) => { success: boolean; error?: string };
   updateUserPassword: (userId: string, newPassword: string) => { success: boolean; error?: string };
+  addCategory: (categoryName: string) => void;
   setGlobalAnnouncement: (message: string, active: boolean, type?: "info" | "warning" | "success") => void;
 }
 
@@ -439,6 +452,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
+  const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
   const [reviews, setReviews] = useState<SubmissionReview[]>(INITIAL_REVIEWS);
   const [announcement, setAnnouncement] = useState<{
     message: string;
@@ -472,6 +486,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setUsers(updatedUsers);
         }
         if (parsed.courses) setCourses(parsed.courses);
+        if (parsed.categories && Array.isArray(parsed.categories)) {
+          // Merge custom categories with default ones
+          setCategories(Array.from(new Set([...INITIAL_CATEGORIES, ...parsed.categories])));
+        }
         if (parsed.reviews) setReviews(parsed.reviews);
         if (parsed.announcement) setAnnouncement(parsed.announcement);
       }
@@ -487,12 +505,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ isAuthenticated, currentUser, users, courses, reviews, announcement })
+        JSON.stringify({ isAuthenticated, currentUser, users, courses, categories, reviews, announcement })
       );
     } catch (e) {
       console.warn("Failed to persist state:", e);
     }
-  }, [isAuthenticated, currentUser, users, courses, reviews, announcement, isHydrated]);
+  }, [isAuthenticated, currentUser, users, courses, categories, reviews, announcement, isHydrated]);
 
   // Sync Firebase auth state
   useEffect(() => {
@@ -928,6 +946,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
+  const addCategory = (categoryName: string) => {
+    const trimmed = categoryName.trim();
+    if (!trimmed) return;
+    setCategories((prev) => {
+      if (prev.some((c) => c.toLowerCase() === trimmed.toLowerCase())) return prev;
+      return [...prev, trimmed];
+    });
+  };
+
   const setGlobalAnnouncement = (
     message: string,
     active: boolean,
@@ -946,6 +973,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCurrentRole,
         users,
         courses,
+        categories,
         reviews,
         announcement,
         login,
@@ -966,6 +994,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addUser,
         deleteUser,
         updateUserPassword,
+        addCategory,
         setGlobalAnnouncement,
       }}
     >
