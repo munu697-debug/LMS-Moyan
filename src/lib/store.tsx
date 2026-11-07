@@ -416,6 +416,16 @@ interface AppContextType {
   reviewSubmission: (reviewId: string, grade: number, feedback: string) => void;
   updateUserRole: (userId: string, newRole: UserRole) => void;
   toggleUserStatus: (userId: string) => void;
+  addUser: (userData: {
+    name: string;
+    email: string;
+    password?: string;
+    role: UserRole;
+    title?: string;
+    bio?: string;
+  }) => { success: boolean; error?: string };
+  deleteUser: (userId: string) => { success: boolean; error?: string };
+  updateUserPassword: (userId: string, newPassword: string) => { success: boolean; error?: string };
   setGlobalAnnouncement: (message: string, active: boolean, type?: "info" | "warning" | "success") => void;
 }
 
@@ -840,6 +850,72 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const addUser = (userData: {
+    name: string;
+    email: string;
+    password?: string;
+    role: UserRole;
+    title?: string;
+    bio?: string;
+  }) => {
+    const trimmedEmail = userData.email.trim().toLowerCase();
+    if (users.some((u) => u.email.toLowerCase() === trimmedEmail)) {
+      return { success: false, error: "An account with this email already exists." };
+    }
+
+    const defaultAvatars: Record<UserRole, string> = {
+      tutor: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      student: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+      admin: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+    };
+
+    const newUser: User = {
+      id: `user-${userData.role}-${Date.now()}`,
+      name: userData.name.trim(),
+      email: trimmedEmail,
+      password: userData.password || "password123",
+      role: userData.role,
+      avatar: defaultAvatars[userData.role],
+      title: userData.title || (userData.role === "tutor" ? "Verified Instructor" : undefined),
+      bio: userData.bio || "",
+      status: "active",
+      enrolledCourseIds: [],
+      completedLessonIds: [],
+      streakDays: 1,
+      quizScores: {},
+      certificates: [],
+      earnings: userData.role === "tutor" ? 0 : undefined,
+      joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    };
+
+    setUsers((prev) => [newUser, ...prev]);
+    return { success: true };
+  };
+
+  const deleteUser = (userId: string) => {
+    if (currentUser?.id === userId) {
+      return { success: false, error: "You cannot delete your own active administrator account." };
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+    return { success: true };
+  };
+
+  const updateUserPassword = (userId: string, newPassword: string) => {
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: "Password must be at least 6 characters long." };
+    }
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, password: newPassword } : u))
+    );
+
+    if (currentUser?.id === userId) {
+      setCurrentUser((prev) => (prev ? { ...prev, password: newPassword } : null));
+    }
+
+    return { success: true };
+  };
+
   const setGlobalAnnouncement = (
     message: string,
     active: boolean,
@@ -875,6 +951,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         reviewSubmission,
         updateUserRole,
         toggleUserStatus,
+        addUser,
+        deleteUser,
+        updateUserPassword,
         setGlobalAnnouncement,
       }}
     >

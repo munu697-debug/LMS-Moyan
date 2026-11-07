@@ -9,26 +9,65 @@ import {
   Percent,
   Sparkles,
   CheckCircle,
+  KeyRound,
+  ShieldCheck,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function AdminSettingsPage() {
-  const { announcement, setGlobalAnnouncement } = useAppStore();
+  const { announcement, setGlobalAnnouncement, currentUser, updateUserPassword } = useAppStore();
 
+  // Announcement State
   const [message, setMessage] = useState(announcement.message);
   const [isActive, setIsActive] = useState(announcement.active);
   const [bannerType, setBannerType] = useState<"info" | "warning" | "success">(
     announcement.type
   );
 
+  // Platform State
   const [royaltyFee, setRoyaltyFee] = useState(85);
   const [aiModel, setAiModel] = useState("gemini-2.0-flash");
+
+  // Admin Password Change State
+  const [currentAdminPassword, setCurrentAdminPassword] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
 
   const handleSaveAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();
     setGlobalAnnouncement(message, isActive, bannerType);
     toast.success("Platform announcement broadcast updated in real-time! 📢");
+  };
+
+  const handleUpdateAdminPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    if (!newAdminPassword || newAdminPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (newAdminPassword !== confirmAdminPassword) {
+      toast.error("New passwords do not match. Please verify.");
+      return;
+    }
+
+    const result = updateUserPassword(currentUser.id, newAdminPassword);
+    if (!result.success) {
+      toast.error(result.error || "Failed to update admin password.");
+      return;
+    }
+
+    toast.success("Admin password successfully updated! Keep your new credentials safe. 🔑");
+    setCurrentAdminPassword("");
+    setNewAdminPassword("");
+    setConfirmAdminPassword("");
   };
 
   return (
@@ -38,11 +77,82 @@ export default function AdminSettingsPage() {
           Global Parameters
         </span>
         <h1 className="mt-1 text-2xl font-extrabold text-foreground sm:text-3xl">
-          System & Broadcast Configuration
+          System & Security Configuration
         </h1>
         <p className="text-xs text-muted-foreground sm:text-sm">
-          Broadcast site-wide announcements, calibrate platform royalty splits, and manage Gemini AI endpoints.
+          Update admin security passwords, broadcast announcements, calibrate platform royalty splits, and manage Gemini AI endpoints.
         </p>
+      </div>
+
+      {/* Admin Password & Credentials Section */}
+      <div className="rounded-3xl border border-purple-500/30 bg-card p-6 shadow-sm sm:p-8 space-y-5">
+        <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-purple-600/10 text-purple-600">
+              <KeyRound className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-foreground">Admin Account Credentials & Password</h2>
+              <p className="text-xs text-muted-foreground">Change the master administrator login password</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-600">
+            {currentUser?.email || "marcus.admin@moyan.edu"}
+          </span>
+        </div>
+
+        <form onSubmit={handleUpdateAdminPassword} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">New Admin Password *</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
+                <input
+                  type={showPass ? "text" : "password"}
+                  required
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  placeholder="Min. 6 characters..."
+                  className="w-full rounded-2xl border border-input bg-background pl-10 pr-10 py-2.5 text-xs font-mono outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3.5 top-3 text-muted-foreground hover:text-foreground"
+                >
+                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Confirm New Password *</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
+                <input
+                  type={showPass ? "text" : "password"}
+                  required
+                  value={confirmAdminPassword}
+                  onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                  placeholder="Repeat new password..."
+                  className="w-full rounded-2xl border border-input bg-background pl-10 pr-3.5 py-2.5 text-xs font-mono outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-[11px] text-muted-foreground">
+              Current password is: <code className="rounded bg-muted px-1.5 py-0.5 font-bold text-foreground">{currentUser?.password || "password123"}</code>
+            </p>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-purple-700 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              <ShieldCheck className="h-4 w-4" /> Update Admin Password
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Broadcast Announcement Form */}
@@ -148,11 +258,8 @@ export default function AdminSettingsPage() {
             className="w-full rounded-2xl border border-border bg-background p-3 text-xs font-bold text-foreground outline-none focus:border-purple-600"
           >
             <option value="gemini-2.0-flash">Gemini 2.0 Flash (Recommended: Ultra-low latency, 1M context)</option>
-            <option value="gemini-2.0-pro">Gemini 2.0 Pro Experimental (Complex math & code reasoning)</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Deep complex problem solving)</option>
           </select>
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
-            <CheckCircle className="h-3.5 w-3.5" /> API Gateway Health: Normal (0.01% error rate)
-          </div>
         </div>
       </div>
     </div>
