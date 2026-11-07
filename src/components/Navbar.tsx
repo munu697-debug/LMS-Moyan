@@ -70,15 +70,17 @@ export function Navbar() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5 font-extrabold tracking-tight text-foreground">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-elegant">
-            <GraduationCap className="h-5 w-5" />
-          </span>
+        <Link href="/" className="flex items-center gap-2.5 font-extrabold tracking-tight text-foreground group">
+          <img
+            src="/logo.png"
+            alt="Moyan AI"
+            className="h-10 w-10 rounded-xl object-contain shadow-sm border border-border/40 group-hover:scale-105 transition-transform"
+          />
           <div className="leading-tight">
-            <span className="text-lg">Moyan</span>
-            <span className="text-lg font-light text-primary">Learn</span>
+            <span className="text-lg font-extrabold">Moyan</span>
+            <span className="text-lg font-bold text-primary">AI</span>
             <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-              AI
+              Learn
             </span>
           </div>
         </Link>

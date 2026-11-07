@@ -131,12 +131,16 @@ export default function CertificatesPage() {
                 <div className="pointer-events-none absolute inset-0 bg-grid opacity-30" />
 
                 {/* Top Badge */}
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-elegant">
-                  <GraduationCap className="h-8 w-8" />
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl shadow-elegant">
+                  <img
+                    src="/logo.png"
+                    alt="Moyan AI Badge"
+                    className="h-14 w-14 rounded-2xl object-contain border border-primary/30"
+                  />
                 </div>
 
                 <p className="mt-4 text-xs font-bold uppercase tracking-widest text-primary">
-                  Moyan Learn Academy of Adaptive Intelligence
+                  Moyan AI Academy of Adaptive Intelligence
                 </p>
 
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-foreground sm:text-3xl font-serif">

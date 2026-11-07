@@ -463,10 +463,12 @@ export default function HomePage() {
       <footer className="border-t border-border bg-card/40 py-10 text-center text-sm text-muted-foreground">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 md:flex-row">
           <div className="flex items-center gap-2 font-bold text-foreground">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-4 w-4" />
-            </span>
-            Moyan Learn
+            <img
+              src="/logo.png"
+              alt="Moyan AI Logo"
+              className="h-8 w-8 rounded-lg object-contain shadow-sm border border-border/40"
+            />
+            <span>Moyan AI</span>
           </div>
           <p>© 2026 Moyan Learn Inc. AI-Powered Adaptive LMS.</p>
           <div className="flex gap-6 text-xs">

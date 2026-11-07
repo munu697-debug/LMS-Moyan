@@ -6,11 +6,13 @@ import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "Moyan Learn — AI-Powered Adaptive Learning Platform",
+  title: "Moyan AI — Next-Gen AI Learning Platform",
   description:
     "Next-generation AI learning platform with personal Gemini AI tutor, adaptive courses, and dedicated Student, Tutor, and Admin panels.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
 };
 

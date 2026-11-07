@@ -82,11 +82,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Brand */}
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 font-extrabold tracking-tight">
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-elegant">
-              <GraduationCap className="h-5 w-5" />
-            </span>
-            <span className="text-xl">Moyan Learn</span>
+          <Link href="/" className="inline-flex items-center gap-2.5 font-extrabold tracking-tight group">
+            <img
+              src="/logo.png"
+              alt="Moyan AI Logo"
+              className="h-11 w-11 rounded-2xl object-contain shadow-sm border border-border/40 group-hover:scale-105 transition-transform"
+            />
+            <span className="text-xl">Moyan AI</span>
           </Link>
           <h1 className="text-2xl font-extrabold text-foreground">Sign in to your account</h1>
           <p className="text-xs text-muted-foreground">
