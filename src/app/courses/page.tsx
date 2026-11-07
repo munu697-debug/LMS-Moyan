@@ -27,6 +27,7 @@ export default function CoursesCatalogPage() {
     currentUser,
     requestEnrollment,
     enrollmentRequests,
+    isRealtimeConnected,
   } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -67,9 +68,20 @@ export default function CoursesCatalogPage() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-10">
       {/* Header */}
       <div className="text-center space-y-3 max-w-2xl mx-auto">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
-          <Sparkles className="h-3.5 w-3.5" /> Adaptive Curriculum Marketplace
-        </span>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
+            <Sparkles className="h-3.5 w-3.5" /> Adaptive Curriculum Marketplace
+          </span>
+          {isRealtimeConnected && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              </span>
+              Realtime Database Connected
+            </span>
+          )}
+        </div>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
           Explore AI Learning Paths
         </h1>
@@ -140,15 +152,31 @@ export default function CoursesCatalogPage() {
               className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card shadow-card transition-all hover:border-primary/40 hover:shadow-lg"
             >
               <div>
-                <div className="relative h-48 bg-gradient-primary p-4 text-primary-foreground">
-                  <div className="absolute inset-0 bg-grid opacity-60" />
-                  <span className="rounded-full bg-card/90 px-3 py-1 text-xs font-bold text-primary backdrop-blur-md">
-                    {course.level}
-                  </span>
-                  <span className="absolute right-4 top-4 rounded-full bg-primary-foreground/20 px-3 py-1 text-xs font-bold">
-                    ${course.price}
-                  </span>
-                  <BookOpen className="absolute bottom-4 right-4 h-16 w-16 text-primary-foreground/30 transition-transform group-hover:scale-110" />
+                <div className="relative h-48 bg-gradient-primary p-4 text-primary-foreground overflow-hidden">
+                  {course.coverImage && (
+                    <img
+                      src={course.coverImage}
+                      alt={course.title}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-grid opacity-50" />
+                  {course.coverImage && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+                  )}
+                  <div className="relative z-10 flex h-full flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full bg-card/90 px-3 py-1 text-xs font-bold text-primary backdrop-blur-md">
+                        {course.level}
+                      </span>
+                      <span className="rounded-full bg-primary-foreground/20 px-3 py-1 text-xs font-bold backdrop-blur-md">
+                        ₹{course.price}
+                      </span>
+                    </div>
+                    {!course.coverImage && (
+                      <BookOpen className="self-end h-16 w-16 text-primary-foreground/30 transition-transform group-hover:scale-110" />
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-6">

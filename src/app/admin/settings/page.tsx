@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sliders,
   Megaphone,
@@ -27,6 +27,13 @@ export default function AdminSettingsPage() {
   const [bannerType, setBannerType] = useState<"info" | "warning" | "success">(
     announcement.type
   );
+
+  // Sync inputs with global announcement store
+  useEffect(() => {
+    setMessage(announcement.message);
+    setIsActive(announcement.active);
+    setBannerType(announcement.type);
+  }, [announcement.message, announcement.active, announcement.type]);
 
   // Platform State
   const [royaltyFee, setRoyaltyFee] = useState(85);
@@ -97,7 +104,7 @@ export default function AdminSettingsPage() {
             </div>
           </div>
           <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-600">
-            {currentUser?.email || "marcus.admin@moyan.edu"}
+            {currentUser?.email || process.env.NEXT_PUBLIC_ADMIN_EMAIL || "Administrator"}
           </span>
         </div>
 
@@ -143,7 +150,7 @@ export default function AdminSettingsPage() {
 
           <div className="flex items-center justify-between pt-2">
             <p className="text-[11px] text-muted-foreground">
-              Current password is: <code className="rounded bg-muted px-1.5 py-0.5 font-bold text-foreground">{currentUser?.password || "password123"}</code>
+              Passwords are securely encrypted and must be at least 6 characters long.
             </p>
             <button
               type="submit"
@@ -207,10 +214,38 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        {/* Live Header Preview Box */}
+        <div className="rounded-2xl border border-dashed border-border/80 p-3.5 bg-muted/20 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+            <span>Header Live Preview</span>
+            <span className={isActive ? "text-emerald-600 font-bold" : "text-muted-foreground"}>
+              {isActive ? "● Broadcasting to all visitors" : "○ Inactive (hidden)"}
+            </span>
+          </div>
+          {isActive ? (
+            <div
+              className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2 text-xs font-semibold ${
+                bannerType === "success"
+                  ? "bg-emerald-500/15 text-emerald-950 dark:text-emerald-100 border border-emerald-500/30"
+                  : bannerType === "warning"
+                  ? "bg-amber-500/15 text-amber-950 dark:text-amber-100 border border-amber-500/30"
+                  : "bg-blue-500/15 text-blue-900 dark:text-blue-100 border border-blue-500/20"
+              }`}
+            >
+              <Megaphone className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{message || "No announcement message entered"}</span>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic py-0.5">
+              Banner is currently inactive and will not display in the website header.
+            </p>
+          )}
+        </div>
+
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-purple-700 transition-transform hover:scale-105"
+            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-purple-700 transition-transform hover:scale-105 cursor-pointer"
           >
             <Save className="h-4 w-4" /> Publish Broadcast
           </button>

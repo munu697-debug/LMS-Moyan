@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
+import ModernVideoPlayer from "@/components/ModernVideoPlayer";
 
 interface PageProps {
   params: Promise<{ courseId: string }>;
@@ -177,17 +178,20 @@ export default function LearnCoursePage({ params }: PageProps) {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column: Video & Lesson Content (2 cols) */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Video Player */}
-          <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-border bg-black shadow-lg">
-            {activeLesson?.videoUrl ? (
-              <iframe
-                src={activeLesson.videoUrl}
-                title={activeLesson.title}
-                className="h-full w-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
+          {/* Modern LMS Video Player */}
+          {activeLesson?.videoUrl ? (
+            <ModernVideoPlayer
+              key={activeLesson.id}
+              videoUrl={activeLesson.videoUrl}
+              title={activeLesson.title}
+              courseTitle={course.title}
+              duration={activeLesson.duration}
+              onEnded={() => {
+                if (!isCompleted) handleToggleCompletion();
+              }}
+            />
+          ) : (
+            <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-border bg-black shadow-lg">
               <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-card to-secondary p-8 text-center">
                 <PlayCircle className="h-16 w-16 text-primary" />
                 <p className="mt-3 text-sm font-bold text-foreground">
@@ -195,8 +199,8 @@ export default function LearnCoursePage({ params }: PageProps) {
                 </p>
                 <p className="text-xs text-muted-foreground">Click play to begin lesson stream</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Lesson Header & Mark Complete */}
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">

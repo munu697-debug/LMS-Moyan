@@ -72,9 +72,9 @@ export function Navbar() {
         {/* Brand */}
         <Link href="/" className="flex items-center gap-2.5 font-extrabold tracking-tight text-foreground group">
           <img
-            src="/logo.png"
+            src="/logo-round.png"
             alt="Moyan AI"
-            className="h-10 w-10 rounded-xl object-contain shadow-sm border border-border/40 group-hover:scale-105 transition-transform"
+            className="h-10 w-10 rounded-full object-contain shadow-sm border border-border/40 group-hover:scale-105 transition-transform"
           />
           <div className="leading-tight">
             <span className="text-lg font-extrabold">Moyan</span>

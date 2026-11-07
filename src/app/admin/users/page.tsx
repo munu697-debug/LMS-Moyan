@@ -21,14 +21,28 @@ import {
   Lock,
   Mail,
   User as UserIcon,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { useAppStore, UserRole, User } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function AdminUsersPage() {
-  const { users, currentUser, updateUserRole, toggleUserStatus, addUser, deleteUser, updateUserPassword } = useAppStore();
+  const {
+    users,
+    currentUser,
+    updateUserRole,
+    toggleUserStatus,
+    approveUser,
+    rejectUser,
+    addUser,
+    deleteUser,
+    updateUserPassword,
+  } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+
+  const pendingTutorsCount = users.filter((u) => u.role === "tutor" && u.status === "pending_approval").length;
 
   // Modal states
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
@@ -38,7 +52,7 @@ export default function AdminUsersPage() {
   // Add User Form State
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
-  const [addPassword, setAddPassword] = useState("password123");
+  const [addPassword, setAddPassword] = useState("");
   const [addRole, setAddRole] = useState<UserRole>("tutor");
   const [addTitle, setAddTitle] = useState("Staff AI Researcher & Instructor");
   const [addBio, setAddBio] = useState("");
@@ -51,7 +65,12 @@ export default function AdminUsersPage() {
     const matchesSearch =
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    const matchesRole =
+      roleFilter === "all"
+        ? true
+        : roleFilter === "pending_approval"
+        ? u.role === "tutor" && u.status === "pending_approval"
+        : u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
@@ -79,7 +98,7 @@ export default function AdminUsersPage() {
     const result = addUser({
       name: addName.trim(),
       email: addEmail.trim(),
-      password: addPassword || "password123",
+      password: addPassword.trim(),
       role: addRole,
       title: addTitle.trim(),
       bio: addBio.trim(),
@@ -91,13 +110,13 @@ export default function AdminUsersPage() {
     }
 
     toast.success(
-      `New ${addRole.toUpperCase()} account created for ${addName}! Password: ${addPassword || "password123"} 🎉`
+      `New ${addRole.toUpperCase()} account created for ${addName}! 🎉`
     );
     setIsAddUserModalOpen(false);
     // Reset form
     setAddName("");
     setAddEmail("");
-    setAddPassword("password123");
+    setAddPassword("");
     setAddRole("tutor");
     setAddBio("");
   };
@@ -160,6 +179,31 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
+      {/* Pending Tutors Alert Banner */}
+      {pendingTutorsCount > 0 && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600">
+              <Clock className="h-5 w-5 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-foreground">
+                {pendingTutorsCount} Tutor Application{pendingTutorsCount > 1 ? "s" : ""} Awaiting Admin Approval
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Instructors cannot log in or create courses until verified and approved by an administrator.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setRoleFilter("pending_approval")}
+            className="self-start sm:self-auto rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition-colors cursor-pointer"
+          >
+            Review Pending ({pendingTutorsCount})
+          </button>
+        </div>
+      )}
+
       {/* Search & Filter Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
@@ -180,6 +224,9 @@ export default function AdminUsersPage() {
             className="rounded-2xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground outline-none"
           >
             <option value="all">All Roles ({users.length})</option>
+            {pendingTutorsCount > 0 && (
+              <option value="pending_approval">Pending Tutors ({pendingTutorsCount})</option>
+            )}
             <option value="tutor">Tutors ({users.filter((u) => u.role === "tutor").length})</option>
             <option value="student">Students ({users.filter((u) => u.role === "student").length})</option>
             <option value="admin">Admins ({users.filter((u) => u.role === "admin").length})</option>
@@ -208,6 +255,7 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-border/60">
               {filtered.map((u) => {
                 const isSuspended = u.status === "suspended";
+                const isPending = u.status === "pending_approval";
                 const isCurrent = currentUser?.id === u.id;
 
                 return (
@@ -262,22 +310,32 @@ export default function AdminUsersPage() {
 
                     {/* Status Badge */}
                     <td className="p-4">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                          isSuspended
-                            ? "bg-rose-500/10 text-rose-600"
-                            : "bg-emerald-500/10 text-emerald-600"
-                        }`}
-                      >
-                        {u.status.toUpperCase()}
-                      </span>
+                      {isPending ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-600 border border-amber-500/20">
+                          <Clock className="h-3 w-3" /> PENDING APPROVAL
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                            isSuspended
+                              ? "bg-rose-500/10 text-rose-600"
+                              : "bg-emerald-500/10 text-emerald-600"
+                          }`}
+                        >
+                          {u.status.toUpperCase()}
+                        </span>
+                      )}
                     </td>
 
                     {/* Stats & Streak */}
                     <td className="p-4">
-                      {u.role === "tutor" ? (
+                      {isPending ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                          <Clock className="h-3 w-3" /> Awaiting Verification
+                        </span>
+                      ) : u.role === "tutor" ? (
                         <span className="font-bold text-blue-600">
-                          ${u.earnings?.toLocaleString() || "0"} earned
+                          ₹{u.earnings?.toLocaleString("en-IN") || "0"} earned
                         </span>
                       ) : u.role === "admin" ? (
                         <span className="font-bold text-purple-600">Super Admin</span>
@@ -301,53 +359,83 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
 
-                    {/* Action Buttons: Password, Suspend, Delete */}
+                    {/* Action Buttons: Password, Suspend, Delete OR Approve Tutor */}
                     <td className="p-4 pr-6 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {/* Change Password Button */}
-                        <button
-                          onClick={() => {
-                            setPasswordUserModal(u);
-                            setNewPassword(u.password || "");
-                          }}
-                          className="inline-flex items-center gap-1 rounded-xl border border-purple-500/30 bg-purple-500/10 px-2.5 py-1.5 text-xs font-semibold text-purple-600 hover:bg-purple-500/20 transition-all"
-                          title="Change user password"
-                        >
-                          <KeyRound className="h-3 w-3" />
-                          <span>Change Pass</span>
-                        </button>
-
-                        {/* Suspend / Reactivate */}
-                        <button
-                          onClick={() => handleStatusToggle(u.id, u.status, u.name)}
-                          className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-all ${
-                            isSuspended
-                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                              : "border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
-                          }`}
-                        >
-                          {isSuspended ? (
-                            <>
-                              <UserCheck className="h-3 w-3" /> Reactivate
-                            </>
-                          ) : (
-                            <>
-                              <UserX className="h-3 w-3" /> Suspend
-                            </>
-                          )}
-                        </button>
-
-                        {/* Delete User (cannot delete self) */}
-                        {!isCurrent && (
+                      {isPending ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Approve Tutor Button */}
                           <button
-                            onClick={() => setUserToDelete(u)}
-                            className="inline-flex items-center rounded-xl border border-rose-500/30 bg-rose-500/10 p-1.5 text-rose-600 hover:bg-rose-500/20 transition-all"
-                            title="Delete user"
+                            onClick={() => {
+                              approveUser(u.id);
+                              toast.success(`Approved tutor account for ${u.name}! They can now log in and access the Tutor Studio.`);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                            title="Approve tutor account"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Approve Tutor</span>
                           </button>
-                        )}
-                      </div>
+
+                          {/* Reject Tutor Button */}
+                          <button
+                            onClick={() => {
+                              rejectUser(u.id);
+                              toast.warning(`Application rejected for ${u.name}.`);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-500/20 transition-all cursor-pointer"
+                            title="Reject tutor application"
+                          >
+                            <UserX className="h-3 w-3" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Change Password Button */}
+                          <button
+                            onClick={() => {
+                              setPasswordUserModal(u);
+                              setNewPassword(u.password || "");
+                            }}
+                            className="inline-flex items-center gap-1 rounded-xl border border-purple-500/30 bg-purple-500/10 px-2.5 py-1.5 text-xs font-semibold text-purple-600 hover:bg-purple-500/20 transition-all cursor-pointer"
+                            title="Change user password"
+                          >
+                            <KeyRound className="h-3 w-3" />
+                            <span>Change Pass</span>
+                          </button>
+
+                          {/* Suspend / Reactivate */}
+                          <button
+                            onClick={() => handleStatusToggle(u.id, u.status, u.name)}
+                            className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                              isSuspended
+                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                                : "border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+                            }`}
+                          >
+                            {isSuspended ? (
+                              <>
+                                <UserCheck className="h-3 w-3" /> Reactivate
+                              </>
+                            ) : (
+                              <>
+                                <UserX className="h-3 w-3" /> Suspend
+                              </>
+                            )}
+                          </button>
+
+                          {/* Delete User (cannot delete self) */}
+                          {!isCurrent && (
+                            <button
+                              onClick={() => setUserToDelete(u)}
+                              className="inline-flex items-center rounded-xl border border-rose-500/30 bg-rose-500/10 p-1.5 text-rose-600 hover:bg-rose-500/20 transition-all cursor-pointer"
+                              title="Delete user"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -424,7 +512,7 @@ export default function AdminUsersPage() {
                     required
                     value={addEmail}
                     onChange={(e) => setAddEmail(e.target.value)}
-                    placeholder="sarah.jenkins@moyan.edu"
+                    placeholder="user@example.com"
                     className="w-full rounded-2xl border border-input bg-background pl-10 pr-3.5 py-2.5 text-xs outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
                   />
                 </div>
@@ -435,12 +523,12 @@ export default function AdminUsersPage() {
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
                   <input
-                    type="text"
+                    type="password"
                     required
                     value={addPassword}
                     onChange={(e) => setAddPassword(e.target.value)}
-                    placeholder="password123"
-                    className="w-full rounded-2xl border border-input bg-background pl-10 pr-3.5 py-2.5 text-xs font-mono outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                    placeholder="Enter account password..."
+                    className="w-full rounded-2xl border border-input bg-background pl-10 pr-3.5 py-2.5 text-xs outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
                   />
                 </div>
               </div>

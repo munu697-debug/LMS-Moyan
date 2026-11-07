@@ -51,6 +51,7 @@ export default function AdminDashboard() {
 
   const pendingCourses = courses.filter((c) => c.status === "pending_approval");
   const pendingEnrollments = enrollmentRequests.filter((r) => r.status === "pending");
+  const pendingTutors = users.filter((u) => u.role === "tutor" && u.status === "pending_approval");
   const totalTutors = users.filter((u) => u.role === "tutor").length;
   const totalStudents = users.filter((u) => u.role === "student").length;
 
@@ -70,14 +71,24 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        {pendingCourses.length > 0 && (
-          <Link
-            href="/admin/courses"
-            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg transition-transform hover:scale-105"
-          >
-            <FileCheck2 className="h-4 w-4" /> Review {pendingCourses.length} Pending Course{pendingCourses.length > 1 ? "s" : ""}
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {pendingTutors.length > 0 && (
+            <Link
+              href="/admin/users"
+              className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg transition-transform hover:scale-105"
+            >
+              <Clock className="h-4 w-4 animate-pulse" /> Review {pendingTutors.length} Pending Tutor{pendingTutors.length > 1 ? "s" : ""}
+            </Link>
+          )}
+          {pendingCourses.length > 0 && (
+            <Link
+              href="/admin/courses"
+              className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg transition-transform hover:scale-105"
+            >
+              <FileCheck2 className="h-4 w-4" /> Review {pendingCourses.length} Pending Course{pendingCourses.length > 1 ? "s" : ""}
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* 4 Stat Cards */}
@@ -89,7 +100,7 @@ export default function AdminDashboard() {
               <DollarSign className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">$428,500</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">₹3,42,85,000</p>
           <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
             <TrendingUp className="h-3 w-3" /> +22.8% YOY
           </span>
@@ -162,7 +173,7 @@ export default function AdminDashboard() {
                   }}
                 />
                 <Bar dataKey="users" name="New Learners" fill="#9333ea" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="revenue" name="Platform Revenue ($)" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="revenue" name="Platform Revenue (₹)" fill="#2563eb" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

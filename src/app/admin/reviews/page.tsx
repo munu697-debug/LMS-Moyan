@@ -25,7 +25,6 @@ interface UserReviewItem {
   id: string;
   studentName: string;
   studentAvatar: string;
-  studentEmail: string;
   courseTitle: string;
   rating: number;
   date: string;
@@ -40,7 +39,6 @@ const INITIAL_USER_REVIEWS: UserReviewItem[] = [
     id: "rev-1",
     studentName: "Alex Chen",
     studentAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
-    studentEmail: "alex.chen@student.moyan.edu",
     courseTitle: "Prompt Engineering Mastery",
     rating: 5,
     date: "2 hours ago",
@@ -53,7 +51,6 @@ const INITIAL_USER_REVIEWS: UserReviewItem[] = [
     id: "rev-2",
     studentName: "Aisha Khan",
     studentAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-    studentEmail: "aisha.khan@gmail.com",
     courseTitle: "Machine Learning Foundations",
     rating: 5,
     date: "Yesterday",
@@ -66,7 +63,6 @@ const INITIAL_USER_REVIEWS: UserReviewItem[] = [
     id: "rev-3",
     studentName: "Rahul Mehta",
     studentAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    studentEmail: "rahul.m@techcorp.io",
     courseTitle: "Build Production Apps with Gemini API",
     rating: 5,
     date: "2 days ago",
@@ -79,7 +75,6 @@ const INITIAL_USER_REVIEWS: UserReviewItem[] = [
     id: "rev-4",
     studentName: "Maya Lin",
     studentAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
-    studentEmail: "maya.lin@designstudio.co",
     courseTitle: "Prompt Engineering Mastery",
     rating: 5,
     date: "3 days ago",
@@ -92,7 +87,6 @@ const INITIAL_USER_REVIEWS: UserReviewItem[] = [
     id: "rev-5",
     studentName: "David Kim",
     studentAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-    studentEmail: "david.kim@datascience.org",
     courseTitle: "Machine Learning Foundations",
     rating: 4,
     date: "5 days ago",

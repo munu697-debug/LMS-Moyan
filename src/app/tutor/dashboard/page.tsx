@@ -81,7 +81,7 @@ export default function TutorDashboard() {
               <DollarSign className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">$14,850</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">₹1,25,000</p>
           <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
             <TrendingUp className="h-3 w-3" /> +18.4% this month
           </span>
@@ -151,7 +151,7 @@ export default function TutorDashboard() {
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -159,7 +159,7 @@ export default function TutorDashboard() {
                       border: "1px solid #e2e8f0",
                       fontSize: "12px",
                     }}
-                    formatter={(val) => [`$${val}`, "Revenue"]}
+                    formatter={(val) => [`₹${val}`, "Revenue"]}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                 </AreaChart>
@@ -193,7 +193,7 @@ export default function TutorDashboard() {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {c.enrolledCount.toLocaleString()} students • ${c.price} • {c.level}
+                      {c.enrolledCount.toLocaleString()} students • ₹{c.price} • {c.level}
                     </p>
                   </div>
 

@@ -22,11 +22,23 @@ import {
   query,
   where,
 } from "firebase/firestore";
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  onValue,
+  update as rtdbUpdate,
+  remove as rtdbRemove,
+  push,
+  child,
+} from "firebase/database";
 
-// User's provided Firebase configuration
+// User's provided Firebase configuration with Realtime Database URL
 export const firebaseConfig = {
   apiKey: "AIzaSyAyy_PTejuLkVsnSANsQSEuu795cZ-9f1Y",
   authDomain: "moyan-classroom.firebaseapp.com",
+  databaseURL: "https://moyan-classroom-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "moyan-classroom",
   storageBucket: "moyan-classroom.firebasestorage.app",
   messagingSenderId: "258346636618",
@@ -38,6 +50,8 @@ export const firebaseConfig = {
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const rtdb = getDatabase(app);
+export { ref, set, get, onValue, rtdbUpdate, rtdbRemove, push, child };
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 

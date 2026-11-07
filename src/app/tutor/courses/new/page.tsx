@@ -26,7 +26,7 @@ export default function NewCoursePage() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Generative AI");
   const [level, setLevel] = useState<"Beginner" | "Intermediate" | "Advanced">("Beginner");
-  const [price, setPrice] = useState(49);
+  const [price, setPrice] = useState(2999);
   const [duration, setDuration] = useState("3h 30m");
   const [coverImage, setCoverImage] = useState<string>("");
 
@@ -143,7 +143,7 @@ export default function NewCoursePage() {
       quiz: quizQuestions,
     });
 
-    toast.success("Course created and submitted for Admin verification! 🚀");
+    toast.success("Course uploaded and synced in real-time with backend! 🚀");
     router.push("/tutor/courses");
   };
 
@@ -231,7 +231,7 @@ export default function NewCoursePage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Price ($ USD)</label>
+              <label className="text-xs font-bold text-foreground">Price (₹ INR)</label>
               <input
                 type="number"
                 min="0"

@@ -81,6 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const pendingCoursesCount = courses.filter((c) => c.status === "pending_approval").length;
+  const pendingTutorsCount = users.filter((u) => u.role === "tutor" && u.status === "pending_approval").length;
 
   const navItems = [
     { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -90,7 +91,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: BookOpen,
       badge: pendingCoursesCount,
     },
-    { label: "User Management", href: "/admin/users", icon: Users, badge: users.length },
+    {
+      label: "User Management",
+      href: "/admin/users",
+      icon: Users,
+      badge: pendingTutorsCount > 0 ? pendingTutorsCount : undefined,
+    },
     { label: "User Reviews", href: "/admin/reviews", icon: MessageSquare },
     { label: "System Settings", href: "/admin/settings", icon: Sliders },
   ];

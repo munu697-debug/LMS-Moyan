@@ -1,7 +1,18 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth, db, googleProvider } from "./firebase";
+import {
+  auth,
+  db,
+  rtdb,
+  googleProvider,
+  ref,
+  set,
+  get,
+  onValue,
+  rtdbUpdate,
+  rtdbRemove,
+} from "./firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -80,7 +91,7 @@ export interface User {
   avatar: string;
   title?: string;
   bio?: string;
-  status: "active" | "suspended";
+  status: "active" | "suspended" | "pending_approval";
   enrolledCourseIds: string[];
   pendingCourseIds?: string[];
   completedLessonIds: string[];
@@ -148,7 +159,8 @@ const INITIAL_COURSES: Course[] = [
     rating: 4.9,
     reviewCount: 428,
     enrolledCount: 3820,
-    price: 49,
+    price: 2999,
+    coverImage: "https://images.unsplash.com/photo-1677442136019-21780efad99a?w=800&auto=format&fit=crop&q=80",
     status: "published",
     modules: [
       {
@@ -236,7 +248,8 @@ const INITIAL_COURSES: Course[] = [
     rating: 4.8,
     reviewCount: 312,
     enrolledCount: 2190,
-    price: 79,
+    price: 4999,
+    coverImage: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&auto=format&fit=crop&q=80",
     status: "published",
     modules: [
       {
@@ -288,7 +301,8 @@ const INITIAL_COURSES: Course[] = [
     rating: 4.95,
     reviewCount: 189,
     enrolledCount: 1640,
-    price: 99,
+    price: 6999,
+    coverImage: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
     status: "published",
     modules: [
       {
@@ -319,104 +333,15 @@ const INITIAL_COURSES: Course[] = [
   },
 ];
 
-const INITIAL_USERS: User[] = [
-  {
-    id: "user-student-1",
-    name: "Alex Chen",
-    email: "alex.chen@student.moyan.edu",
-    password: "password123",
-    role: "student",
-    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
-    title: "Curious Learner & Software Engineer",
-    bio: "Passionate about generative models, full-stack architectures, and AI-assisted workflows.",
-    status: "active",
-    enrolledCourseIds: ["course-1"],
-    pendingCourseIds: [],
-    completedLessonIds: ["l1-1"],
-    streakDays: 7,
-    quizScores: {
-      "course-1": 100,
-    },
-    certificates: [
-      {
-        id: "cert-moyan-883",
-        courseId: "course-1",
-        courseTitle: "Prompt Engineering Mastery",
-        studentName: "Alex Chen",
-        issueDate: "October 20, 2026",
-        grade: 100,
-        credentialUrl: "https://moyan.edu/verify/cert-moyan-883",
-      },
-    ],
-    joinedDate: "Sept 2026",
-  },
-  {
-    id: "user-tutor-1",
-    name: "Dr. Elena Vance",
-    email: "elena.vance@tutor.moyan.edu",
-    password: "password123",
-    role: "tutor",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    title: "Staff AI Researcher at DeepMind Labs",
-    bio: "PhD in Machine Learning. Author of 'Frontier Prompting'. Helping 5,000+ students master next-generation AI.",
-    status: "active",
-    enrolledCourseIds: [],
-    completedLessonIds: [],
-    streakDays: 42,
-    quizScores: {},
-    certificates: [],
-    earnings: 14850,
-    joinedDate: "Jan 2026",
-  },
-  {
-    id: "user-admin-1",
-    name: "Super Admin",
-    email: "marcus.admin@moyan.edu",
-    password: "password123",
-    role: "admin",
-    avatar: "",
-    title: "Platform Administrator & Head of Ops",
-    bio: "Overseeing learning quality, curriculum approvals, platform security, and tutor verification at Moyan Learn.",
-    status: "active",
-    enrolledCourseIds: [],
-    completedLessonIds: [],
-    streakDays: 120,
-    quizScores: {},
-    certificates: [],
-    joinedDate: "Dec 2025",
-  },
-];
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").trim().toLowerCase();
 
-const INITIAL_REVIEWS: SubmissionReview[] = [
-  {
-    id: "sub-1",
-    studentId: "user-student-1",
-    studentName: "Alex Chen",
-    courseId: "course-1",
-    courseTitle: "Prompt Engineering Mastery",
-    taskTitle: "Design a Zero-Shot Prompt with Strict JSON Output for Financial Sentiment",
-    submissionText:
-      "System prompt: You are a financial analyst. Analyze the sentiment of the provided earning call excerpt. Output ONLY valid JSON matching this schema: { sentiment: 'bullish'|'bearish'|'neutral', confidence: float(0..1), keyDrivers: string[] }.",
-    submittedAt: "2 hours ago",
-    status: "pending",
-  },
-  {
-    id: "sub-2",
-    studentId: "user-student-2",
-    studentName: "Maya Lin",
-    courseId: "course-1",
-    courseTitle: "Prompt Engineering Mastery",
-    taskTitle: "Implement Least-to-Most Decomposition Prompt",
-    submissionText: "Decomposed the problem into 3 sub-questions with sequential reasoning checks before final answer generation.",
-    submittedAt: "Yesterday",
-    status: "graded",
-    grade: 98,
-    feedback: "Exceptional breakdown! The constraints on intermediate hallucinations were particularly well-defined.",
-  },
-];
+const INITIAL_USERS: User[] = [];
+
+const INITIAL_REVIEWS: SubmissionReview[] = [];
 
 interface AppContextType {
   isHydrated: boolean;
+  isRealtimeConnected: boolean;
   isAuthenticated: boolean;
   currentUser: User | null;
   currentRole: UserRole;
@@ -428,9 +353,9 @@ interface AppContextType {
   enrollmentRequests: EnrollmentRequest[];
   announcement: { message: string; active: boolean; type: "info" | "warning" | "success" };
   // Auth Actions
-  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
-  loginWithGoogle: (preferredRole?: UserRole) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
-  signup: (data: { name: string; email: string; password?: string; role: UserRole }) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; role?: UserRole; isPendingApproval?: boolean }>;
+  loginWithGoogle: (preferredRole?: UserRole) => Promise<{ success: boolean; error?: string; role?: UserRole; isPendingApproval?: boolean }>;
+  signup: (data: { name: string; email: string; password?: string; role: UserRole }) => Promise<{ success: boolean; error?: string; isPendingApproval?: boolean }>;
   logout: () => Promise<void>;
   // Core Actions
   enrollInCourse: (courseId: string) => void;
@@ -447,6 +372,8 @@ interface AppContextType {
   reviewSubmission: (reviewId: string, grade: number, feedback: string) => void;
   updateUserRole: (userId: string, newRole: UserRole) => void;
   toggleUserStatus: (userId: string) => void;
+  approveUser: (userId: string) => void;
+  rejectUser: (userId: string) => void;
   addUser: (userData: {
     name: string;
     email: string;
@@ -465,8 +392,22 @@ const AppContext = createContext<AppContextType | null>(null);
 
 const STORAGE_KEY = "moyan_learn_platform_state_v4";
 
+// Ensure Firebase Auth session exists so writes to Realtime Database succeed
+async function ensureFirebaseAuth(user?: User | null) {
+  if (!auth) return;
+  if (auth.currentUser) return;
+  try {
+    if (user?.email && user?.password) {
+      await signInWithEmailAndPassword(auth, user.email, user.password);
+    }
+  } catch (e) {
+    // Silently handle
+  }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
@@ -493,19 +434,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (parsed.isAuthenticated !== undefined) setIsAuthenticated(parsed.isAuthenticated);
         if (parsed.currentUser) {
           const user = parsed.currentUser;
-          if (user.role === "admin") {
-            user.name = "Super Admin";
-            user.avatar = "";
+          if (ADMIN_EMAIL && user.email.toLowerCase() === ADMIN_EMAIL) {
+            user.name = user.name || "Super Admin";
+            user.role = "admin";
           }
-          setCurrentUser(user);
+          const { password, ...safeCurrentUser } = user;
+          setCurrentUser(safeCurrentUser as User);
         }
-        if (parsed.users) {
-          const updatedUsers = parsed.users.map((u: User) =>
-            u.role === "admin" ? { ...u, name: "Super Admin", avatar: "" } : u
-          );
+        if (parsed.users && Array.isArray(parsed.users)) {
+          const updatedUsers = parsed.users.map((u: User) => {
+            const isAdmin = Boolean(ADMIN_EMAIL && u.email.toLowerCase() === ADMIN_EMAIL);
+            const { password, ...safeUser } = u;
+            return {
+              ...safeUser,
+              role: isAdmin ? ("admin" as UserRole) : safeUser.role,
+            } as User;
+          });
           setUsers(updatedUsers);
         }
-        if (parsed.courses) setCourses(parsed.courses);
+        if (parsed.courses && Array.isArray(parsed.courses)) {
+          const updatedCourses = parsed.courses.map((c: Course) => {
+            if (c.price === 49) return { ...c, price: 2999 };
+            if (c.price === 79) return { ...c, price: 4999 };
+            if (c.price === 99) return { ...c, price: 6999 };
+            return c;
+          });
+          setCourses(updatedCourses);
+        }
         if (parsed.categories && Array.isArray(parsed.categories)) {
           // Merge custom categories with default ones
           setCategories(Array.from(new Set([...INITIAL_CATEGORIES, ...parsed.categories])));
@@ -535,6 +490,109 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, currentUser, users, courses, categories, reviews, enrollmentRequests, announcement, isHydrated]);
 
+  // Realtime Database live backend synchronization
+  useEffect(() => {
+    if (!rtdb) return;
+
+    // 1. Live Courses listener
+    const coursesRef = ref(rtdb, "courses");
+    const unsubscribeCourses = onValue(
+      coursesRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const val = snapshot.val();
+          let list: Course[] = [];
+          if (Array.isArray(val)) {
+            list = val.filter(Boolean);
+          } else if (typeof val === "object" && val !== null) {
+            list = Object.values(val);
+          }
+          if (list.length > 0) {
+            setCourses(list);
+            setIsRealtimeConnected(true);
+          }
+        } else {
+          // Seed INITIAL_COURSES to RTDB so backend has full default catalog
+          ensureFirebaseAuth().then(() => {
+            INITIAL_COURSES.forEach((c) => {
+              set(ref(rtdb, `courses/${c.id}`), c).catch(() => {});
+            });
+            setIsRealtimeConnected(true);
+          });
+        }
+      },
+      (err) => {
+        console.warn("RTDB realtime courses sync notice:", err);
+      }
+    );
+
+    // 2. Live Enrollment Requests listener
+    const enrollRef = ref(rtdb, "enrollmentRequests");
+    const unsubscribeEnroll = onValue(
+      enrollRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const val = snapshot.val();
+          let list: EnrollmentRequest[] = [];
+          if (Array.isArray(val)) {
+            list = val.filter(Boolean);
+          } else if (typeof val === "object" && val !== null) {
+            list = Object.values(val);
+          }
+          if (list.length > 0) {
+            setEnrollmentRequests(list);
+          }
+        }
+      },
+      (err) => {
+        console.warn("RTDB realtime enrollments sync notice:", err);
+      }
+    );
+
+    // 3. Live Global Announcement listener
+    const announcementRef = ref(rtdb, "announcement");
+    const unsubscribeAnnouncement = onValue(
+      announcementRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const val = snapshot.val();
+          if (val && typeof val === "object" && typeof val.message === "string") {
+            setAnnouncement({
+              message: val.message,
+              active: typeof val.active === "boolean" ? val.active : true,
+              type: val.type || "info",
+            });
+          }
+        }
+      },
+      (err) => {
+        console.warn("RTDB realtime announcement sync notice:", err);
+      }
+    );
+
+    return () => {
+      unsubscribeCourses();
+      unsubscribeEnroll();
+      unsubscribeAnnouncement();
+    };
+  }, []);
+
+  // Cross-tab synchronization
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.announcement) {
+            setAnnouncement(parsed.announcement);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   // Sync Firebase auth state
   useEffect(() => {
     if (!auth) return;
@@ -545,7 +603,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const email = fbUser.email?.toLowerCase() || "";
           setCurrentUser((prev) => {
             if (prev && prev.email.toLowerCase() === email) return prev;
-            const existing = users.find((u) => u.email.toLowerCase() === email || u.id === fbUser.uid);
+            let existing = users.find((u) => u.email.toLowerCase() === email || u.id === fbUser.uid);
+            const isAdminEmail = Boolean(ADMIN_EMAIL && email === ADMIN_EMAIL);
+            if (isAdminEmail) {
+              if (existing) {
+                return { ...existing, role: "admin", status: "active", name: existing.name || "Super Admin" };
+              }
+              return {
+                id: fbUser.uid,
+                name: fbUser.displayName || "Super Admin",
+                email,
+                role: "admin",
+                avatar: fbUser.photoURL || "",
+                status: "active",
+                enrolledCourseIds: [],
+                completedLessonIds: [],
+                streakDays: 120,
+                quizScores: {},
+                certificates: [],
+                joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+              };
+            }
             if (existing) return existing;
             return {
               id: fbUser.uid,
@@ -577,9 +655,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const trimmedEmail = email.trim().toLowerCase();
 
     // 1. Attempt Firebase Authentication
+    let firebaseSuccess = false;
+    let firebaseUid = "";
+    let firebaseDisplayName = "";
     try {
       if (password && auth) {
-        await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        const userCred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+        firebaseSuccess = true;
+        firebaseUid = userCred.user.uid;
+        firebaseDisplayName = userCred.user.displayName || "";
       }
     } catch (fbErr: any) {
       console.info("Firebase Auth info:", fbErr.message);
@@ -587,6 +671,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Validate against stored user records
     let user = users.find((u) => u.email.toLowerCase() === trimmedEmail);
+    const isAdminEmail = Boolean(ADMIN_EMAIL && trimmedEmail === ADMIN_EMAIL);
+
+    if (!user && (isAdminEmail || firebaseSuccess)) {
+      user = {
+        id: firebaseUid || `user-${Date.now()}`,
+        name: firebaseDisplayName || (isAdminEmail ? "Super Admin" : trimmedEmail.split("@")[0]),
+        email: trimmedEmail,
+        role: isAdminEmail ? "admin" : "student",
+        avatar: "",
+        status: "active",
+        enrolledCourseIds: [],
+        completedLessonIds: [],
+        streakDays: isAdminEmail ? 120 : 1,
+        quizScores: {},
+        certificates: [],
+        joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+      };
+      setUsers((prev) => [user!, ...prev]);
+    }
 
     if (!user) {
       return { success: false, error: "No account found with this email. Please sign up." };
@@ -596,8 +699,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: "This account has been suspended by an administrator." };
     }
 
-    if (password && user.password && user.password !== password) {
+    if (!firebaseSuccess && password && user.password && user.password !== password) {
       return { success: false, error: "Incorrect password. Please try again." };
+    }
+
+    if (user.role === "tutor" && user.status === "pending_approval") {
+      return {
+        success: false,
+        error: "Your tutor account is awaiting administrator approval. Please wait for an admin to verify your account.",
+        role: "tutor" as UserRole,
+        isPendingApproval: true,
+      };
     }
 
     setIsAuthenticated(true);
@@ -618,21 +730,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // Check if user already exists
       let user = users.find((u) => u.email.toLowerCase() === email || u.id === fbUser.uid);
+      const isAdminEmail = Boolean(ADMIN_EMAIL && email === ADMIN_EMAIL);
 
       if (!user) {
         // Create new user record
+        const isTutor = !isAdminEmail && preferredRole === "tutor";
         user = {
           id: fbUser.uid,
-          name: fbUser.displayName || "Google Learner",
+          name: fbUser.displayName || (isAdminEmail ? "Super Admin" : isTutor ? "Google Instructor" : "Google Learner"),
           email: email,
-          role: preferredRole,
-          avatar: fbUser.photoURL || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
-          status: "active",
+          role: isAdminEmail ? "admin" : preferredRole,
+          avatar: fbUser.photoURL || (isAdminEmail ? "" : `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`),
+          status: isTutor ? "pending_approval" : "active",
           enrolledCourseIds: [],
           completedLessonIds: [],
-          streakDays: 1,
+          streakDays: isAdminEmail ? 120 : 1,
           quizScores: {},
           certificates: [],
+          earnings: isTutor ? 0 : undefined,
           joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
         };
 
@@ -644,8 +759,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           email: user.email,
           role: user.role,
           avatar: user.avatar,
+          status: user.status,
           createdAt: new Date().toISOString(),
         }).catch((err) => console.warn("Firestore sync notice (non-fatal):", err?.message));
+      } else if (isAdminEmail && user.role !== "admin") {
+        user = { ...user, role: "admin", status: "active", name: user.name || "Super Admin" };
+        setUsers((prev) => prev.map((u) => (u.id === user!.id ? user! : u)));
+      }
+
+      if (user.status === "suspended") {
+        return { success: false, error: "This account has been suspended by an administrator." };
+      }
+
+      if (user.role === "tutor" && user.status === "pending_approval") {
+        return {
+          success: false,
+          error: "Your tutor account is awaiting administrator approval. Please wait for an admin to verify your account.",
+          role: "tutor" as UserRole,
+          isPendingApproval: true,
+        };
       }
 
       setIsAuthenticated(true);
@@ -697,11 +829,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // 1. Create account in Firebase
     try {
-      if (auth) {
+      if (auth && data.password) {
         const userCred = await createUserWithEmailAndPassword(
           auth,
           trimmedEmail,
-          data.password || "password123"
+          data.password
         );
         if (userCred.user) {
           firebaseUid = userCred.user.uid;
@@ -720,23 +852,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.info("Firebase registration note:", fbErr.message);
     }
 
+    const isAdminEmail = Boolean(ADMIN_EMAIL && trimmedEmail === ADMIN_EMAIL);
+    const assignedRole: UserRole = isAdminEmail ? "admin" : data.role;
+    const isTutor = assignedRole === "tutor";
     const newUser: User = {
       id: firebaseUid || `user-${Date.now()}`,
       name: data.name.trim(),
       email: trimmedEmail,
-      password: data.password || "password123",
-      role: data.role,
-      avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
-      status: "active",
+      role: assignedRole,
+      avatar: isAdminEmail ? "" : `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+      status: isTutor ? "pending_approval" : "active",
       enrolledCourseIds: [],
       completedLessonIds: [],
-      streakDays: 1,
+      streakDays: isAdminEmail ? 120 : 1,
       quizScores: {},
       certificates: [],
+      earnings: isTutor ? 0 : undefined,
       joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
     };
 
     setUsers((prev) => [newUser, ...prev]);
+
+    if (isTutor) {
+      // Tutors require administrator approval before logging in
+      return { success: true, isPendingApproval: true };
+    }
+
     setIsAuthenticated(true);
     setCurrentUser(newUser);
 
@@ -790,17 +931,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const requestEnrollment = (courseId: string): { success: boolean; requiresAuth?: boolean; message?: string } => {
-    let student = currentUser;
+    const student = currentUser;
     if (!student) {
-      // Auto-fallback to demo student if not logged in
-      const defaultStudent = users.find((u) => u.role === "student") || users[0];
-      if (defaultStudent) {
-        student = defaultStudent;
-        setCurrentUser(defaultStudent);
-        setIsAuthenticated(true);
-      } else {
-        return { success: false, requiresAuth: true, message: "Please log in to enroll." };
-      }
+      return { success: false, requiresAuth: true, message: "Please sign in or create an account to enroll." };
     }
 
     const targetCourse = courses.find((c) => c.id === courseId);
@@ -860,6 +993,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...prev, pendingCourseIds: updatedPending };
     });
 
+    if (rtdb) {
+      ensureFirebaseAuth(student).then(() => {
+        set(ref(rtdb, `enrollmentRequests/${newRequest.id}`), newRequest).catch(() => {});
+      });
+    }
+
     return { success: true, message: "Enrollment request submitted for admin approval." };
   };
 
@@ -898,6 +1037,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCourses((prev) =>
       prev.map((c) => (c.id === req.courseId ? { ...c, enrolledCount: c.enrolledCount + 1 } : c))
     );
+
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        rtdbUpdate(ref(rtdb, `enrollmentRequests/${requestId}`), { status: "approved" }).catch(() => {});
+        const currentCount = courses.find((c) => c.id === req.courseId)?.enrolledCount || 0;
+        rtdbUpdate(ref(rtdb, `courses/${req.courseId}`), { enrolledCount: currentCount + 1 }).catch(() => {});
+      });
+    }
   };
 
   const rejectEnrollmentRequest = (requestId: string) => {
@@ -925,6 +1072,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return prev;
     });
+
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        rtdbUpdate(ref(rtdb, `enrollmentRequests/${requestId}`), { status: "rejected" }).catch(() => {});
+      });
+    }
   };
 
   const toggleLessonCompletion = (courseId: string, lessonId: string) => {
@@ -984,29 +1137,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrolledCount: 0,
       status: currentRole === "admin" ? "published" : "pending_approval",
     };
-    setCourses((prev) => [newCourse, ...prev]);
+    // 1. Optimistic local update
+    setCourses((prev) => [newCourse, ...prev.filter((c) => c.id !== newCourse.id)]);
+
+    // 2. Realtime Database live upload to backend
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        set(ref(rtdb, `courses/${newCourse.id}`), newCourse).catch((err) => {
+          console.warn("RTDB course upload notice:", err);
+        });
+      });
+    }
   };
 
   const updateCourse = (courseId: string, updates: Partial<Course>) => {
     setCourses((prev) =>
       prev.map((c) => (c.id === courseId ? { ...c, ...updates } : c))
     );
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        rtdbUpdate(ref(rtdb, `courses/${courseId}`), updates).catch((err) => {
+          console.warn("RTDB course update notice:", err);
+        });
+      });
+    }
   };
 
   const deleteCourse = (courseId: string) => {
     setCourses((prev) => prev.filter((c) => c.id !== courseId));
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        rtdbRemove(ref(rtdb, `courses/${courseId}`)).catch((err) => {
+          console.warn("RTDB course delete notice:", err);
+        });
+      });
+    }
   };
 
   const approveCourse = (courseId: string) => {
     setCourses((prev) =>
       prev.map((c) => (c.id === courseId ? { ...c, status: "published" } : c))
     );
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        rtdbUpdate(ref(rtdb, `courses/${courseId}`), { status: "published" }).catch((err) => {
+          console.warn("RTDB approve course notice:", err);
+        });
+      });
+    }
   };
 
   const rejectCourse = (courseId: string) => {
     setCourses((prev) =>
       prev.map((c) => (c.id === courseId ? { ...c, status: "draft" } : c))
     );
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        rtdbUpdate(ref(rtdb, `courses/${courseId}`), { status: "draft" }).catch((err) => {
+          console.warn("RTDB reject course notice:", err);
+        });
+      });
+    }
   };
 
   const reviewSubmission = (reviewId: string, grade: number, feedback: string) => {
@@ -1037,12 +1228,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const toggleUserStatus = (userId: string) => {
     setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? { ...u, status: u.status === "active" ? "suspended" : "active" }
-          : u
-      )
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const nextStatus = u.status === "active" ? "suspended" : "active";
+        return { ...u, status: nextStatus };
+      })
     );
+  };
+
+  const approveUser = (userId: string) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, status: "active" } : u))
+    );
+    if (currentUser?.id === userId) {
+      setCurrentUser((prev) => (prev ? { ...prev, status: "active" } : null));
+    }
+  };
+
+  const rejectUser = (userId: string) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, status: "suspended" } : u))
+    );
+    if (currentUser?.id === userId) {
+      setCurrentUser((prev) => (prev ? { ...prev, status: "suspended" } : null));
+    }
   };
 
   const addUser = (userData: {
@@ -1068,7 +1277,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: `user-${userData.role}-${Date.now()}`,
       name: userData.name.trim(),
       email: trimmedEmail,
-      password: userData.password || "password123",
       role: userData.role,
       avatar: defaultAvatars[userData.role],
       title: userData.title || (userData.role === "tutor" ? "Verified Instructor" : undefined),
@@ -1125,13 +1333,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     active: boolean,
     type: "info" | "warning" | "success" = "info"
   ) => {
-    setAnnouncement({ message, active, type });
+    const updated = { message, active, type };
+    setAnnouncement(updated);
+
+    // 1. Immediately persist to localStorage
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const parsed = saved ? JSON.parse(saved) : {};
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ ...parsed, announcement: updated })
+      );
+    } catch (e) {
+      console.warn("Failed to persist announcement locally:", e);
+    }
+
+    // 2. Dispatch cross-tab storage event
+    try {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: STORAGE_KEY,
+          newValue: JSON.stringify({ announcement: updated }),
+        })
+      );
+    } catch (e) {}
+
+    // 3. Sync to Firebase Realtime Database
+    if (rtdb) {
+      ensureFirebaseAuth(currentUser).then(() => {
+        set(ref(rtdb, "announcement"), updated).catch((err) => {
+          console.warn("RTDB realtime announcement sync error:", err);
+        });
+      });
+    }
   };
 
   return (
     <AppContext.Provider
       value={{
         isHydrated,
+        isRealtimeConnected,
         isAuthenticated,
         currentUser,
         currentRole,
@@ -1160,6 +1401,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         reviewSubmission,
         updateUserRole,
         toggleUserStatus,
+        approveUser,
+        rejectUser,
         addUser,
         deleteUser,
         updateUserPassword,

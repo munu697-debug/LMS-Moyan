@@ -21,9 +21,11 @@ import {
   Film,
   UserCheck,
   Check,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useAppStore, Course } from "@/lib/store";
 import { toast } from "sonner";
+import { ImageUpload } from "@/components/ImageUpload";
 
 export default function AdminCoursesPage() {
   const {
@@ -59,8 +61,9 @@ export default function AdminCoursesPage() {
   const [newDescription, setNewDescription] = useState("");
   const [newCategory, setNewCategory] = useState("Generative AI");
   const [newLevel, setNewLevel] = useState<"Beginner" | "Intermediate" | "Advanced">("Beginner");
-  const [newPrice, setNewPrice] = useState(49);
+  const [newPrice, setNewPrice] = useState(2999);
   const [newDuration, setNewDuration] = useState("4h 30m");
+  const [newCoverImage, setNewCoverImage] = useState("");
   const [newInstructorId, setNewInstructorId] = useState<string>(
     users.find((u) => u.role === "tutor")?.id || currentUser?.id || ""
   );
@@ -272,6 +275,7 @@ export default function AdminCoursesPage() {
       level: newLevel,
       price: Number(newPrice) || 0,
       duration: newDuration,
+      coverImage: newCoverImage.trim() || undefined,
       status: "published",
       instructor: instructorObj,
       modules: formattedModules,
@@ -297,7 +301,8 @@ export default function AdminCoursesPage() {
     setNewTitle("");
     setNewTagline("");
     setNewDescription("");
-    setNewPrice(49);
+    setNewPrice(2999);
+    setNewCoverImage("");
     setCourseModules([
       {
         id: "m-1",
@@ -440,7 +445,7 @@ export default function AdminCoursesPage() {
                         Student: {req.studentName} ({req.studentEmail})
                       </span>
                       <span className="font-semibold text-primary">
-                        ${req.coursePrice} • {req.courseCategory}
+                        ₹{req.coursePrice} • {req.courseCategory}
                       </span>
                     </div>
                   </div>
@@ -489,41 +494,54 @@ export default function AdminCoursesPage() {
                 }`}
               >
                 <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                        course.status === "published"
-                          ? "bg-emerald-500/10 text-emerald-600"
-                          : course.status === "pending_approval"
-                          ? "bg-amber-500/10 text-amber-600 animate-pulse"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {course.status.replace("_", " ").toUpperCase()}
-                    </span>
-                    <span className="text-xs font-bold text-purple-600">{course.category}</span>
-                    <span className="text-xs text-muted-foreground">• {course.level}</span>
-                    <span className="text-xs font-bold text-foreground">• ${course.price}</span>
-                  </div>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    {course.coverImage ? (
+                      <img
+                        src={course.coverImage}
+                        alt={course.title}
+                        className="h-20 w-32 shrink-0 rounded-2xl object-cover border border-border shadow-xs"
+                      />
+                    ) : (
+                      <div className="flex h-20 w-32 shrink-0 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 border border-purple-500/20">
+                        <BookOpen className="h-7 w-7 opacity-50" />
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                            course.status === "published"
+                              ? "bg-emerald-500/10 text-emerald-600"
+                              : course.status === "pending_approval"
+                              ? "bg-amber-500/10 text-amber-600 animate-pulse"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {course.status.replace("_", " ").toUpperCase()}
+                        </span>
+                        <span className="text-xs font-bold text-purple-600">{course.category}</span>
+                        <span className="text-xs text-muted-foreground">• {course.level}</span>
+                        <span className="text-xs font-bold text-foreground">• ₹{course.price}</span>
+                      </div>
 
-                  <h3 className="text-lg font-bold text-foreground">{course.title}</h3>
-                  <p className="max-w-2xl text-xs text-muted-foreground leading-relaxed">
-                    {course.description || course.tagline}
-                  </p>
+                      <h3 className="text-base font-bold text-foreground leading-snug">{course.title}</h3>
+                      <p className="max-w-2xl text-xs text-muted-foreground leading-relaxed">
+                        {course.description || course.tagline}
+                      </p>
 
-                  <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-                    <img
-                      src={course.instructor.avatar}
-                      alt={course.instructor.name}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-6 w-6 rounded-full border border-border object-cover"
-                    />
-                    <span>Instructor: <strong className="text-foreground">{course.instructor.name}</strong></span>
-                    <span>• {course.modules.length} Modules ({course.modules.flatMap((m) => m.lessons).length} Lessons)</span>
+                      <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+                        <img
+                          src={course.instructor.avatar}
+                          alt={course.instructor.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-5 w-5 rounded-full border border-border object-cover"
+                        />
+                        <span>Instructor: <strong className="text-foreground">{course.instructor.name}</strong></span>
+                        <span>• {course.modules.length} Modules ({course.modules.flatMap((m) => m.lessons).length} Lessons)</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
                 {/* Management Actions */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
@@ -706,7 +724,7 @@ export default function AdminCoursesPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground">Price ($ USD)</label>
+                  <label className="text-xs font-bold text-foreground">Price (₹ INR)</label>
                   <input
                     type="number"
                     min="0"
@@ -742,6 +760,92 @@ export default function AdminCoursesPage() {
                     placeholder="e.g. 5h 45m"
                     className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-purple-600"
                   />
+                </div>
+              </div>
+
+              {/* Course Preview / Cover Image Section */}
+              <div className="space-y-3 rounded-2xl border border-border/80 bg-muted/20 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-purple-600" />
+                    <label className="text-xs font-bold text-foreground">
+                      Course Preview Image (Cover Photo)
+                    </label>
+                  </div>
+                  {newCoverImage && (
+                    <button
+                      type="button"
+                      onClick={() => setNewCoverImage("")}
+                      className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                </div>
+
+                {/* File Upload with Cloudinary */}
+                <ImageUpload
+                  label=""
+                  currentImageUrl={newCoverImage}
+                  onImageUploaded={(url) => setNewCoverImage(url)}
+                />
+
+                {/* Direct URL input with preset chips */}
+                <div className="space-y-1.5 pt-1">
+                  <input
+                    type="url"
+                    value={newCoverImage}
+                    onChange={(e) => setNewCoverImage(e.target.value)}
+                    placeholder="Or enter direct image URL (e.g. https://images.unsplash.com/...)"
+                    className="w-full rounded-xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-purple-600"
+                  />
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">Suggested Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewCoverImage(
+                          "https://images.unsplash.com/photo-1677442136019-21780efad99a?w=800&auto=format&fit=crop&q=80"
+                        )
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-0.5 hover:bg-purple-500/10 hover:border-purple-500/40 hover:text-purple-600 transition-colors cursor-pointer"
+                    >
+                      🤖 AI & LLMs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewCoverImage(
+                          "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&auto=format&fit=crop&q=80"
+                        )
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-0.5 hover:bg-purple-500/10 hover:border-purple-500/40 hover:text-purple-600 transition-colors cursor-pointer"
+                    >
+                      📊 Data Science
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewCoverImage(
+                          "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80"
+                        )
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-0.5 hover:bg-purple-500/10 hover:border-purple-500/40 hover:text-purple-600 transition-colors cursor-pointer"
+                    >
+                      💻 Full-Stack
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNewCoverImage(
+                          "https://images.unsplash.com/photo-1629654297299-c8506221ca97?w=800&auto=format&fit=crop&q=80"
+                        )
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-0.5 hover:bg-purple-500/10 hover:border-purple-500/40 hover:text-purple-600 transition-colors cursor-pointer"
+                    >
+                      🔒 Security
+                    </button>
+                  </div>
                 </div>
               </div>
 

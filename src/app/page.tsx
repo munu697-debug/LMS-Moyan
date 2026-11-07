@@ -53,7 +53,7 @@ const topics = [
 ];
 
 export default function HomePage() {
-  const { courses, currentRole, setCurrentRole } = useAppStore();
+  const { courses, currentUser, isRealtimeConnected, setCurrentRole } = useAppStore();
 
   const publishedCourses = courses.filter((c) => c.status === "published");
 
@@ -141,14 +141,33 @@ export default function HomePage() {
               <div className="grid gap-4 md:grid-cols-5">
                 <div className="space-y-3 md:col-span-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-muted-foreground">Continue learning</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-muted-foreground">Continue learning</p>
+                      {isRealtimeConnected && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          </span>
+                          Realtime
+                        </span>
+                      )}
+                    </div>
                     <Link href="/user/dashboard" className="text-xs font-semibold text-primary hover:underline">
                       View all enrolled &rarr;
                     </Link>
                   </div>
 
                   {publishedCourses.slice(0, 3).map((c, i) => {
-                    const mockProgress = [75, 45, 20][i] || 30;
+                    const allLessons = c.modules?.flatMap((m) => m.lessons || []) || [];
+                    const userFinished = currentUser?.completedLessonIds
+                      ? allLessons.filter((l) => currentUser.completedLessonIds.includes(l.id)).length
+                      : 0;
+                    const calculatedProgress =
+                      allLessons.length > 0 && userFinished > 0
+                        ? Math.round((userFinished / allLessons.length) * 100)
+                        : [75, 45, 20][i] || 35;
+
                     return (
                       <Link
                         key={c.id}
@@ -156,13 +175,13 @@ export default function HomePage() {
                         className="block rounded-2xl border border-border bg-muted/60 p-4 transition-all hover:border-primary/40 hover:bg-muted"
                       >
                         <div className="flex items-center justify-between text-sm">
-                          <span className="font-semibold text-foreground">{c.title}</span>
-                          <span className="text-xs font-medium text-muted-foreground">{mockProgress}%</span>
+                          <span className="font-semibold text-foreground line-clamp-1 mr-2">{c.title}</span>
+                          <span className="text-xs font-medium text-muted-foreground shrink-0">{calculatedProgress}%</span>
                         </div>
                         <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
                           <motion.div
                             initial={{ width: 0 }}
-                            animate={{ width: `${mockProgress}%` }}
+                            animate={{ width: `${calculatedProgress}%` }}
                             transition={{ delay: 0.8 + i * 0.2, duration: 1.2 }}
                             className="h-full rounded-full bg-gradient-primary"
                           />
@@ -317,7 +336,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {publishedCourses.map((c, i) => (
+            {publishedCourses.slice().reverse().map((c, i) => (
               <motion.div
                 key={c.id}
                 variants={fadeUp}
@@ -325,26 +344,42 @@ export default function HomePage() {
                 whileInView="show"
                 viewport={{ once: true }}
                 custom={i}
-                whileHover={{ scale: 1.03 }}
+                whileHover={{ scale: 1.02 }}
                 className="group flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card shadow-card transition-all"
               >
                 <div>
-                  <div className="relative h-44 bg-gradient-primary">
-                    <div className="absolute inset-0 bg-grid opacity-60" />
-                    <BookOpen className="absolute bottom-4 right-4 h-14 w-14 text-primary-foreground/30 transition-transform group-hover:scale-110" />
-                    <span className="absolute left-4 top-4 rounded-full bg-card/90 px-3 py-1 text-xs font-semibold text-primary backdrop-blur-md">
-                      {c.level}
-                    </span>
-                    <span className="absolute right-4 top-4 rounded-full bg-primary-foreground/20 px-3 py-1 text-xs font-bold text-primary-foreground">
-                      ${c.price}
-                    </span>
+                  <div className="relative h-48 overflow-hidden bg-gradient-primary">
+                    {c.coverImage ? (
+                      <img
+                        src={c.coverImage}
+                        alt={c.title}
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-grid opacity-60" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+
+                    <div className="relative z-10 flex h-full flex-col justify-between p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="rounded-full bg-card/90 px-3 py-1 text-xs font-semibold text-primary backdrop-blur-md">
+                          {c.level}
+                        </span>
+                        <span className="rounded-full bg-primary-foreground/20 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
+                          ₹{c.price}
+                        </span>
+                      </div>
+                      {!c.coverImage && (
+                        <BookOpen className="self-end h-14 w-14 text-primary-foreground/30 transition-transform group-hover:scale-110" />
+                      )}
+                    </div>
                   </div>
 
                   <div className="p-6">
                     <div className="text-xs font-semibold uppercase tracking-wider text-primary">
                       {c.category}
                     </div>
-                    <h3 className="mt-2 text-lg font-bold leading-snug">{c.title}</h3>
+                    <h3 className="mt-2 text-lg font-bold leading-snug line-clamp-1">{c.title}</h3>
                     <p className="mt-2 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
                       {c.tagline}
                     </p>
@@ -368,10 +403,10 @@ export default function HomePage() {
                     <span className="text-muted-foreground font-normal">({c.reviewCount})</span>
                   </div>
                   <Link
-                    href={`/user/learn/${c.id}`}
+                    href={`/courses`}
                     className="inline-flex items-center gap-1 font-bold text-primary hover:underline"
                   >
-                    Open Course <ArrowRight className="h-3 w-3" />
+                    Enroll & Preview <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
               </motion.div>
@@ -456,9 +491,9 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 md:flex-row">
           <div className="flex items-center gap-2 font-bold text-foreground">
             <img
-              src="/logo.png"
+              src="/logo-round.png"
               alt="Moyan AI Logo"
-              className="h-8 w-8 rounded-lg object-contain shadow-sm border border-border/40"
+              className="h-8 w-8 rounded-full object-contain shadow-sm border border-border/40"
             />
             <span>Moyan AI</span>
           </div>

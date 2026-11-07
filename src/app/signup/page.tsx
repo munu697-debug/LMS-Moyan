@@ -11,6 +11,8 @@ import {
   Mail,
   User,
   AlertCircle,
+  Clock,
+  ShieldCheck,
 } from "lucide-react";
 import { useAppStore, UserRole } from "@/lib/store";
 import { toast } from "sonner";
@@ -25,6 +27,7 @@ export default function SignUpPage() {
   const [role, setRole] = useState<UserRole>("student");
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +55,12 @@ export default function SignUpPage() {
       return;
     }
 
-    const dest = role === "tutor" ? "/tutor/dashboard" : "/user/dashboard";
+    if (result.isPendingApproval || role === "tutor") {
+      setShowPendingModal(true);
+      return;
+    }
+
+    const dest = "/user/dashboard";
     toast.success(`Account created! Welcome to Moyan Learn, ${name.split(" ")[0]}! 🎉`);
     window.location.href = dest;
   };
@@ -64,6 +72,10 @@ export default function SignUpPage() {
     setIsLoading(false);
 
     if (!result.success) {
+      if (result.isPendingApproval) {
+        setShowPendingModal(true);
+        return;
+      }
       if (result.error && !result.error.toLowerCase().includes("closed")) {
         setErrorMsg(result.error);
       } else if (result.error) {
@@ -72,7 +84,12 @@ export default function SignUpPage() {
       return;
     }
 
-    const dest = result.role === "tutor" ? "/tutor/dashboard" : "/user/dashboard";
+    if (result.isPendingApproval || role === "tutor") {
+      setShowPendingModal(true);
+      return;
+    }
+
+    const dest = "/user/dashboard";
     toast.success("Account connected with Google! 🎉");
     window.location.href = dest;
   };
@@ -84,9 +101,9 @@ export default function SignUpPage() {
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2.5 font-extrabold tracking-tight group">
             <img
-              src="/logo.png"
+              src="/logo-round.png"
               alt="Moyan AI Logo"
-              className="h-11 w-11 rounded-2xl object-contain shadow-sm border border-border/40 group-hover:scale-105 transition-transform"
+              className="h-11 w-11 rounded-full object-contain shadow-sm border border-border/40 group-hover:scale-105 transition-transform"
             />
             <span className="text-xl">Moyan AI</span>
           </Link>
@@ -153,11 +170,12 @@ export default function SignUpPage() {
             <span>Continue with Google</span>
           </button>
 
-          <div className="relative flex items-center justify-center">
-            <div className="w-full border-t border-border/80" />
-            <span className="bg-card px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Or with email
+          <div className="relative my-2 flex items-center">
+            <div className="flex-grow border-t border-border/80" />
+            <span className="mx-3 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Or continue with email
             </span>
+            <div className="flex-grow border-t border-border/80" />
           </div>
 
           <form onSubmit={handleSignUp} className="space-y-4">
@@ -224,6 +242,57 @@ export default function SignUpPage() {
           </Link>
         </p>
       </div>
+
+      {/* Tutor Registration Pending Modal */}
+      {showPendingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-4 sm:p-7">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                <Clock className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-foreground">
+                  Tutor Registration Submitted!
+                </h3>
+                <p className="text-xs text-muted-foreground">Pending Administrator Approval</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-muted-foreground space-y-2 leading-relaxed">
+              <p>
+                Thank you for applying to teach on Moyan Learn! Your instructor account has been created and placed in the <strong className="text-amber-600">administrator review queue</strong>.
+              </p>
+              <p>
+                Platform administrators review all tutor applications to maintain curriculum quality. Once an admin approves your profile, you will be able to log in to your Tutor Studio.
+              </p>
+            </div>
+
+            {/* Approval Progress */}
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-3.5 space-y-2 text-xs">
+              <div className="flex items-center gap-2 text-emerald-600 font-semibold">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold">✓</span>
+                <span>Account registered successfully</span>
+              </div>
+              <div className="flex items-center gap-2 text-amber-600 font-semibold">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[10px] font-bold">●</span>
+                <span>Waiting for admin verification & approval</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold">3</span>
+                <span>Access to Tutor Studio unlocked upon approval</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => router.push("/login")}
+              className="w-full rounded-2xl bg-primary py-3 text-xs font-bold text-primary-foreground shadow-md transition-all hover:opacity-95 cursor-pointer"
+            >
+              Go to Sign In
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

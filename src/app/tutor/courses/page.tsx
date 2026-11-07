@@ -100,7 +100,7 @@ export default function TutorCoursesPage() {
                   {course.status.replace("_", " ").toUpperCase()}
                 </span>
                 <span className="absolute right-4 top-4 rounded-full bg-black/30 px-2.5 py-0.5 text-xs font-bold">
-                  ${course.price}
+                  ₹{course.price}
                 </span>
                 <BookOpen className="absolute bottom-3 right-3 h-12 w-12 text-white/20" />
               </div>

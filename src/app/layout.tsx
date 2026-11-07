@@ -10,9 +10,12 @@ export const metadata: Metadata = {
   description:
     "Next-generation AI learning platform with personal Gemini AI tutor, adaptive courses, and dedicated Student, Tutor, and Admin panels.",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: [
+      { url: "/logo-round.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/logo-round.png",
+    apple: "/apple-icon.png",
   },
 };
 
@@ -24,6 +27,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
+        <link rel="icon" href="/logo-round.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
