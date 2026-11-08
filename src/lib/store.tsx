@@ -334,6 +334,7 @@ const INITIAL_COURSES: Course[] = [
 ];
 
 const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").trim().toLowerCase();
+const ADMIN_PASSWORD = (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "").trim();
 
 const INITIAL_USERS: User[] = [];
 
@@ -399,6 +400,8 @@ async function ensureFirebaseAuth(user?: User | null) {
   try {
     if (user?.email && user?.password) {
       await signInWithEmailAndPassword(auth, user.email, user.password);
+    } else if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+      await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
     }
   } catch (e) {
     // Silently handle
@@ -673,6 +676,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let user = users.find((u) => u.email.toLowerCase() === trimmedEmail);
     const isAdminEmail = Boolean(ADMIN_EMAIL && trimmedEmail === ADMIN_EMAIL);
 
+    if (isAdminEmail) {
+      if (password && ADMIN_PASSWORD && password !== ADMIN_PASSWORD && !firebaseSuccess) {
+        return { success: false, error: "Incorrect admin password. Please try again." };
+      }
+    } else if (!firebaseSuccess && password && user?.password && user.password !== password) {
+      return { success: false, error: "Incorrect password. Please try again." };
+    }
+
     if (!user && (isAdminEmail || firebaseSuccess)) {
       user = {
         id: firebaseUid || `user-${Date.now()}`,
@@ -689,6 +700,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
       };
       setUsers((prev) => [user!, ...prev]);
+    } else if (isAdminEmail && user && user.role !== "admin") {
+      user = { ...user, role: "admin", status: "active" };
+      setUsers((prev) => prev.map((u) => (u.id === user!.id ? user! : u)));
     }
 
     if (!user) {
@@ -697,10 +711,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (user.status === "suspended") {
       return { success: false, error: "This account has been suspended by an administrator." };
-    }
-
-    if (!firebaseSuccess && password && user.password && user.password !== password) {
-      return { success: false, error: "Incorrect password. Please try again." };
     }
 
     if (user.role === "tutor" && user.status === "pending_approval") {
