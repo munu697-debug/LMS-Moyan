@@ -34,69 +34,7 @@ interface UserReviewItem {
   adminReply?: string;
 }
 
-const INITIAL_USER_REVIEWS: UserReviewItem[] = [
-  {
-    id: "rev-1",
-    studentName: "Alex Chen",
-    studentAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
-    courseTitle: "Prompt Engineering Mastery",
-    rating: 5,
-    date: "2 hours ago",
-    comment:
-      "The Gemini AI tutor dock is unmatched. Every time I ran into an ambiguity while constructing strict JSON schema prompts, the assistant broke down token probability distributions in seconds. Finished the course with 100% on the quiz!",
-    verified: true,
-    featured: true,
-  },
-  {
-    id: "rev-2",
-    studentName: "Aisha Khan",
-    studentAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-    courseTitle: "Machine Learning Foundations",
-    rating: 5,
-    date: "Yesterday",
-    comment:
-      "The visualization of loss surfaces and Adam momentum optimizers made concepts click that 3 textbooks couldn't explain. The verifiable certificate is already linked to my LinkedIn profile.",
-    verified: true,
-    featured: true,
-  },
-  {
-    id: "rev-3",
-    studentName: "Rahul Mehta",
-    studentAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    courseTitle: "Build Production Apps with Gemini API",
-    rating: 5,
-    date: "2 days ago",
-    comment:
-      "Dr. Elena's lessons on multi-turn function calling and structured outputs gave our engineering team the blueprint for our production AI agent. Outstanding curriculum!",
-    verified: true,
-    featured: false,
-  },
-  {
-    id: "rev-4",
-    studentName: "Maya Lin",
-    studentAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
-    courseTitle: "Prompt Engineering Mastery",
-    rating: 5,
-    date: "3 days ago",
-    comment:
-      "Calm, responsive, and adaptive. I love the streak tracker and real-time confetti when you pass the practice tests. Highly recommended for any serious builder.",
-    verified: true,
-    featured: true,
-  },
-  {
-    id: "rev-5",
-    studentName: "David Kim",
-    studentAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-    courseTitle: "Machine Learning Foundations",
-    rating: 4,
-    date: "5 days ago",
-    comment:
-      "Extremely solid mathematical foundations. Would love to see an additional optional lesson on distributed PyTorch training in a future module update!",
-    verified: true,
-    featured: false,
-    adminReply: "Thanks David! We are currently assembling a dedicated Module on Distributed GPU Training scheduled for next month. — Super Admin",
-  },
-];
+const INITIAL_USER_REVIEWS: UserReviewItem[] = [];
 
 export default function AdminReviewsPage() {
   const { courses } = useAppStore();
@@ -177,9 +115,13 @@ export default function AdminReviewsPage() {
               <Star className="h-4 w-4 fill-amber-500" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">4.9 ★</p>
-          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-            <TrendingUp className="h-3 w-3" /> Top 1% in LMS Category
+          <p className="mt-3 text-2xl font-extrabold text-foreground">
+            {reviewsList.length > 0
+              ? `${(reviewsList.reduce((acc, r) => acc + r.rating, 0) / reviewsList.length).toFixed(1)} ★`
+              : "0.0 ★"}
+          </p>
+          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
+            {reviewsList.length > 0 ? "Verified learner ratings" : "No ratings recorded"}
           </span>
         </div>
 
@@ -190,7 +132,7 @@ export default function AdminReviewsPage() {
               <MessageSquare className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">1,480+</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{reviewsList.length}</p>
           <p className="mt-1 text-[11px] text-muted-foreground">Verified enrolled students</p>
         </div>
 
@@ -201,7 +143,11 @@ export default function AdminReviewsPage() {
               <ThumbsUp className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">94.6%</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">
+            {reviewsList.length > 0
+              ? `${Math.round((reviewsList.filter((r) => r.rating === 5).length / reviewsList.length) * 100)}%`
+              : "0%"}
+          </p>
           <p className="mt-1 text-[11px] text-emerald-600 font-semibold">Positive sentiment</p>
         </div>
 
@@ -212,8 +158,12 @@ export default function AdminReviewsPage() {
               <CheckCircle2 className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">100%</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Within &lt; 2 hours</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">
+            {reviewsList.length > 0
+              ? `${Math.round((reviewsList.filter((r) => r.adminReply).length / reviewsList.length) * 100)}%`
+              : "100%"}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Response rate</p>
         </div>
       </div>
 
@@ -368,7 +318,9 @@ export default function AdminReviewsPage() {
 
         {filtered.length === 0 && (
           <div className="rounded-3xl border border-dashed border-border p-12 text-center text-xs text-muted-foreground">
-            No reviews match the selected filter criteria.
+            {reviewsList.length === 0
+              ? "No student reviews submitted yet. When learners complete courses and leave feedback, their verified reviews will appear here."
+              : "No reviews match the selected filter criteria."}
           </div>
         )}
       </div>

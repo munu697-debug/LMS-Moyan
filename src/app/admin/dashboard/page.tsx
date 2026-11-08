@@ -31,14 +31,6 @@ import {
 } from "recharts";
 import { useAppStore } from "@/lib/store";
 
-const platformGrowthData = [
-  { month: "Jun", users: 18000, revenue: 54000 },
-  { month: "Jul", users: 24000, revenue: 72000 },
-  { month: "Aug", users: 31000, revenue: 98000 },
-  { month: "Sep", users: 42000, revenue: 135000 },
-  { month: "Oct", users: 56000, revenue: 178000 },
-];
-
 export default function AdminDashboard() {
   const {
     courses,
@@ -54,6 +46,61 @@ export default function AdminDashboard() {
   const pendingTutors = users.filter((u) => u.role === "tutor" && u.status === "pending_approval");
   const totalTutors = users.filter((u) => u.role === "tutor").length;
   const totalStudents = users.filter((u) => u.role === "student").length;
+  const disciplines = Array.from(new Set(courses.map((c) => c.category)));
+
+  // Calculate real verified platform GMV based on users' enrolled courses
+  const realGmv = users.reduce((acc, u) => {
+    const userCourses = u.enrolledCourseIds || [];
+    const userTotal = userCourses.reduce((sum, cId) => {
+      const course = courses.find((c) => c.id === cId);
+      return sum + (course?.price || 0);
+    }, 0);
+    return acc + userTotal;
+  }, 0);
+
+  // Dynamic monthly analytics based on real platform data
+  const monthNames = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const currentMonthIdx = new Date().getMonth();
+  const recentMonths = [4, 3, 2, 1, 0].map((offset) => {
+    const idx = (currentMonthIdx - offset + 12) % 12;
+    return monthNames[idx % monthNames.length];
+  });
+
+  const dynamicGrowthData = recentMonths.map((m, idx) => {
+    const isCurrent = idx === recentMonths.length - 1;
+    return {
+      month: m,
+      users: isCurrent ? totalStudents : 0,
+      revenue: isCurrent ? realGmv : 0,
+    };
+  });
+
+  // Real platform audit events
+  const realAuditEvents = [
+    ...enrollmentRequests.map((req) => ({
+      id: `enr-${req.id}`,
+      icon: "user",
+      title: `${req.studentName} requested enrollment in "${req.courseTitle}"`,
+      subtitle: `Status: ${req.status} • Category: ${req.courseCategory}`,
+      badge: req.status === "approved" ? "Approved" : "Pending",
+    })),
+    ...courses.map((c) => ({
+      id: `course-${c.id}`,
+      icon: "book",
+      title: `Course: "${c.title}"`,
+      subtitle: `Status: ${c.status} • Category: ${c.category}`,
+      badge: c.status === "published" ? "Live" : "Draft",
+    })),
+    ...users
+      .filter((u) => u.role !== "admin")
+      .map((u) => ({
+        id: `user-${u.id}`,
+        icon: "user",
+        title: `${u.name} registered as ${u.role === "tutor" ? "Instructor" : "Learner"}`,
+        subtitle: `Status: ${u.status} • Joined: ${u.joinedDate || "Active"}`,
+        badge: u.role,
+      })),
+  ].slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -100,9 +147,9 @@ export default function AdminDashboard() {
               <DollarSign className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">₹3,42,85,000</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">₹{realGmv.toLocaleString("en-IN")}</p>
           <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-            <TrendingUp className="h-3 w-3" /> +22.8% YOY
+            <TrendingUp className="h-3 w-3" /> Live verified platform revenue
           </span>
         </div>
 
@@ -113,8 +160,8 @@ export default function AdminDashboard() {
               <Users className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">120,400+</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{totalStudents} active session accounts</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{totalStudents}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{totalStudents} registered student account{totalStudents === 1 ? "" : "s"}</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -125,7 +172,7 @@ export default function AdminDashboard() {
             </span>
           </div>
           <p className="mt-3 text-2xl font-extrabold text-foreground">{courses.length}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Across 8 disciplines</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Across {disciplines.length} discipline{disciplines.length === 1 ? "" : "s"}</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -135,12 +182,16 @@ export default function AdminDashboard() {
               <FileCheck2 className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">{pendingCourses.length}</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">
+            {pendingCourses.length + pendingEnrollments.length + pendingTutors.length}
+          </p>
           <Link
             href="/admin/courses"
             className="mt-1 block text-[11px] font-semibold text-purple-600 hover:underline"
           >
-            Review submission queue &rarr;
+            {pendingCourses.length + pendingEnrollments.length + pendingTutors.length > 0
+              ? `${pendingCourses.length + pendingEnrollments.length + pendingTutors.length} pending items require action →`
+              : "Review submission queue →"}
           </Link>
         </div>
       </div>
@@ -152,16 +203,16 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between border-b border-border/60 pb-4">
             <div>
               <h2 className="text-base font-bold text-foreground">Monthly Learner Influx & Revenue</h2>
-              <p className="text-xs text-muted-foreground">Adaptive enrollment velocity</p>
+              <p className="text-xs text-muted-foreground">Real-time enrollment velocity</p>
             </div>
             <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-600">
-              Q4 Forecast: +35%
+              Live Analytics
             </span>
           </div>
 
           <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={platformGrowthData}>
+              <BarChart data={dynamicGrowthData}>
                 <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip
@@ -190,35 +241,27 @@ export default function AdminDashboard() {
           </div>
 
           <div className="space-y-4 text-xs">
-            <div className="flex gap-3">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-500/10 text-emerald-600">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              </span>
-              <div>
-                <p className="font-bold text-foreground">Alex Chen certified in Prompt Engineering</p>
-                <p className="text-[11px] text-muted-foreground">Scored 100% • 15m ago</p>
+            {realAuditEvents.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                No recent activity recorded. Real-time platform events will appear here automatically.
               </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-blue-500/10 text-blue-600">
-                <BookOpen className="h-3.5 w-3.5" />
-              </span>
-              <div>
-                <p className="font-bold text-foreground">Dr. Elena Vance submitted course update</p>
-                <p className="text-[11px] text-muted-foreground">Gemini API modules • 45m ago</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-purple-500/10 text-purple-600">
-                <Users className="h-3.5 w-3.5" />
-              </span>
-              <div>
-                <p className="font-bold text-foreground">Marcus Vance updated platform announcement</p>
-                <p className="text-[11px] text-muted-foreground">Gemini 2.0 release notice • 2h ago</p>
-              </div>
-            </div>
+            ) : (
+              realAuditEvents.map((event) => (
+                <div key={event.id} className="flex gap-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-purple-500/10 text-purple-600">
+                    {event.icon === "book" ? (
+                      <BookOpen className="h-3.5 w-3.5" />
+                    ) : (
+                      <Users className="h-3.5 w-3.5" />
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-bold text-foreground truncate">{event.title}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{event.subtitle}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="pt-2">
@@ -319,7 +362,11 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h2 className="text-base font-bold text-foreground">Recent Student Reviews & Ratings</h2>
-              <p className="text-xs text-muted-foreground">4.9 ★ average rating across 1,480+ enrolled learners</p>
+              <p className="text-xs text-muted-foreground">
+                {reviews.length > 0
+                  ? `${(reviews.reduce((acc, r) => acc + (r.grade ? r.grade / 20 : 5), 0) / reviews.length).toFixed(1)} ★ average rating across ${reviews.length} student review${reviews.length === 1 ? "" : "s"}`
+                  : "No student reviews submitted yet"}
+              </p>
             </div>
           </div>
           <Link
@@ -331,53 +378,38 @@ export default function AdminDashboard() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {[
-            {
-              name: "Alex Chen",
-              role: "Prompt Engineering Mastery",
-              quote: "The Gemini AI tutor dock is unmatched. The assistant broke down token probability distributions in seconds!",
-              avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
-            },
-            {
-              name: "Aisha Khan",
-              role: "Machine Learning Foundations",
-              quote: "Loss surfaces and momentum optimizers made concepts click that 3 textbooks couldn't explain. Verified cert is on my LinkedIn!",
-              avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-            },
-            {
-              name: "Rahul Mehta",
-              role: "Gemini API Production Apps",
-              quote: "Lessons on multi-turn function calling and structured outputs gave our team the blueprint for our production AI agent.",
-              avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-            },
-          ].map((r, i) => (
-            <div key={i} className="rounded-2xl border border-border bg-muted/30 p-4 space-y-3 flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, idx) => (
-                    <Star key={idx} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  ))}
+        {reviews.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-8 text-center text-xs text-muted-foreground">
+            No verified student reviews have been submitted yet. When learners complete courses and leave ratings, verified reviews will appear here.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {reviews.slice(0, 3).map((r, i) => (
+              <div key={r.id || i} className="rounded-2xl border border-border bg-muted/30 p-4 space-y-3 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <Star key={idx} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-xs text-foreground italic leading-relaxed">
+                    "{r.feedback || r.submissionText || "Verified student completion"}"
+                  </p>
                 </div>
-                <p className="text-xs text-foreground italic leading-relaxed">
-                  "{r.quote}"
-                </p>
-              </div>
 
-              <div className="flex items-center gap-2.5 pt-2 border-t border-border/60">
-                <img
-                  src={r.avatar}
-                  alt={r.name}
-                  className="h-8 w-8 rounded-full border border-border object-cover"
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-bold text-foreground">{r.name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">{r.role}</p>
+                <div className="flex items-center gap-2.5 pt-2 border-t border-border/60">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold">
+                    {r.studentName?.[0] || "S"}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-foreground">{r.studentName}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{r.courseTitle}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
