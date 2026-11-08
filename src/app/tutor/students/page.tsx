@@ -13,10 +13,23 @@ import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function TutorStudentsPage() {
-  const { users, courses } = useAppStore();
+  const { users, courses, currentUser } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
 
-  const studentUsers = users.filter((u) => u.role === "student");
+  const myCourses = currentUser
+    ? courses.filter(
+        (c) =>
+          c.instructor.id === currentUser.id ||
+          c.instructor.name === currentUser.name
+      )
+    : [];
+  const myCourseIds = myCourses.map((c) => c.id);
+
+  const studentUsers = users.filter((u) => {
+    if (u.role !== "student") return false;
+    if (currentUser?.role === "admin") return true;
+    return (u.enrolledCourseIds || []).some((id) => myCourseIds.includes(id));
+  });
 
   const filtered = studentUsers.filter(
     (s) =>

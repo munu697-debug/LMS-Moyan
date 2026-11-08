@@ -11,25 +11,43 @@ import {
   User,
   Award,
 } from "lucide-react";
-import { useAppStore, SubmissionReview } from "@/lib/store";
+import { useAppStore, SubmissionReview, DEMO_COURSE_IDS } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function TutorReviewsPage() {
-  const { reviews, reviewSubmission } = useAppStore();
+  const { reviews, reviewSubmission, currentUser, courses } = useAppStore();
   const [filter, setFilter] = useState<"all" | "pending" | "graded">("all");
+
+  const myCourses = currentUser
+    ? courses.filter(
+        (c) =>
+          c.instructor.id === currentUser.id ||
+          c.instructor.name === currentUser.name
+      )
+    : [];
+  const myCourseIds = myCourses.map((c) => c.id);
+
+  const myReviews = reviews.filter((r) => {
+    if (DEMO_COURSE_IDS.includes(r.courseId)) return false;
+    if (r.studentName === "Alex Chen") return false;
+    if (r.courseTitle?.toLowerCase().includes("prompt engineering")) return false;
+    if (currentUser?.role === "admin") return true;
+    return myCourseIds.includes(r.courseId);
+  });
+
+  const filtered = myReviews.filter((r) => {
+    if (filter === "all") return true;
+    return r.status === filter;
+  });
+
   const [activeReviewId, setActiveReviewId] = useState<string | null>(
-    reviews[0]?.id || null
+    filtered[0]?.id || null
   );
 
   const [gradeInput, setGradeInput] = useState<number>(95);
   const [feedbackInput, setFeedbackInput] = useState<string>("");
 
-  const filtered = reviews.filter((r) => {
-    if (filter === "all") return true;
-    return r.status === filter;
-  });
-
-  const activeReview = reviews.find((r) => r.id === activeReviewId);
+  const activeReview = filtered.find((r) => r.id === activeReviewId) || filtered[0] || null;
 
   const handleSubmitGrade = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,8 +167,8 @@ export default function TutorReviewsPage() {
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Student's Submitted Solution
               </label>
-              <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 font-mono text-xs text-foreground leading-relaxed">
-                {activeReview.submissionText}
+              <div className="rounded-2xl border border-border/80 bg-muted/40 p-4 font-mono text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+                {activeReview.submissionText || "No submission text provided."}
               </div>
             </div>
 

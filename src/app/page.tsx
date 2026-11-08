@@ -261,10 +261,10 @@ export default function HomePage() {
       {/* Stats Section */}
       <section className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-20 md:grid-cols-4">
         {[
-          ["120K+", "Active learners"],
-          ["850+", "AI-powered courses"],
-          ["4.9★", "Average rating"],
-          ["3x", "Faster mastery"],
+          ["100%", "Adaptive Curriculum"],
+          ["24/7", "Gemini AI Tutor"],
+          ["Verifiable", "Course Credentials"],
+          ["Live", "Interactive Evaluation"],
         ].map(([n, l], i) => (
           <motion.div
             key={l}

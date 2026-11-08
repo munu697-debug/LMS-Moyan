@@ -215,7 +215,7 @@ const AppContext = createContext<AppContextType | null>(null);
 
 const STORAGE_KEY = "moyan_learn_platform_state_v4";
 const DELETED_COURSES_KEY = "moyan_deleted_courses_v1";
-const DEMO_COURSE_IDS = ["course-1", "course-2", "course-3"];
+export const DEMO_COURSE_IDS = ["course-1", "course-2", "course-3"];
 
 function getDeletedCourseIds(): string[] {
   if (typeof window === "undefined") return DEMO_COURSE_IDS;
@@ -281,6 +281,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             name: isAdmin ? (user.name && user.name !== "Google User" ? user.name : "Super Admin") : user.name,
             role: isAdmin ? "admin" : user.role,
             status: isAdmin ? "active" : user.status,
+            streakDays: user.streakDays === 120 ? 1 : (user.streakDays || 1),
           };
           delete (safeCurrentUser as any).password;
           setCurrentUser(safeCurrentUser);
@@ -313,7 +314,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Merge custom categories with default ones
           setCategories(Array.from(new Set([...INITIAL_CATEGORIES, ...parsed.categories])));
         }
-        if (parsed.reviews) setReviews(parsed.reviews);
+        if (parsed.reviews && Array.isArray(parsed.reviews)) {
+          const sanitized = parsed.reviews.filter(
+            (r: SubmissionReview) =>
+              r &&
+              !DEMO_COURSE_IDS.includes(r.courseId) &&
+              r.studentName !== "Alex Chen" &&
+              !r.courseTitle?.toLowerCase().includes("prompt engineering")
+          );
+          setReviews(sanitized);
+        }
         if (parsed.enrollmentRequests && Array.isArray(parsed.enrollmentRequests)) {
           setEnrollmentRequests(parsed.enrollmentRequests);
         }
@@ -476,7 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 status: "active",
                 enrolledCourseIds: [],
                 completedLessonIds: [],
-                streakDays: 120,
+                streakDays: 1,
                 quizScores: {},
                 certificates: [],
                 joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
@@ -551,7 +561,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         status: "active",
         enrolledCourseIds: [],
         completedLessonIds: [],
-        streakDays: isAdminEmail ? 120 : 1,
+        streakDays: 1,
         quizScores: {},
         certificates: [],
         joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
@@ -611,7 +621,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           status: isTutor ? "pending_approval" : "active",
           enrolledCourseIds: [],
           completedLessonIds: [],
-          streakDays: isAdminEmail ? 120 : 1,
+          streakDays: 1,
           quizScores: {},
           certificates: [],
           earnings: isTutor ? 0 : undefined,
@@ -731,7 +741,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: isTutor ? "pending_approval" : "active",
       enrolledCourseIds: [],
       completedLessonIds: [],
-      streakDays: isAdminEmail ? 120 : 1,
+      streakDays: 1,
       quizScores: {},
       certificates: [],
       earnings: isTutor ? 0 : undefined,

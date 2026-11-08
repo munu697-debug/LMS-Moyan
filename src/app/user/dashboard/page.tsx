@@ -25,16 +25,6 @@ import {
 } from "recharts";
 import { useAppStore } from "@/lib/store";
 
-const studyData = [
-  { day: "Mon", minutes: 45 },
-  { day: "Tue", minutes: 60 },
-  { day: "Wed", minutes: 30 },
-  { day: "Thu", minutes: 85 },
-  { day: "Fri", minutes: 55 },
-  { day: "Sat", minutes: 90 },
-  { day: "Sun", minutes: 40 },
-];
-
 export default function UserDashboard() {
   const { currentUser, courses, enrollmentRequests } = useAppStore();
 
@@ -56,18 +46,34 @@ export default function UserDashboard() {
   );
 
   const completedLessonCount = currentUser?.completedLessonIds?.length || 0;
+  const totalMinutes = completedLessonCount * 25;
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMins = totalMinutes % 60;
+  const formattedStudyTime = totalMinutes > 0
+    ? `${hours > 0 ? `${hours}h ` : ""}${remainingMins}m`
+    : "0m";
+
+  const dynamicStudyData = [
+    { day: "Mon", minutes: Math.round(totalMinutes * 0.15) },
+    { day: "Tue", minutes: Math.round(totalMinutes * 0.20) },
+    { day: "Wed", minutes: Math.round(totalMinutes * 0.10) },
+    { day: "Thu", minutes: Math.round(totalMinutes * 0.25) },
+    { day: "Fri", minutes: Math.round(totalMinutes * 0.15) },
+    { day: "Sat", minutes: Math.round(totalMinutes * 0.10) },
+    { day: "Sun", minutes: Math.round(totalMinutes * 0.05) },
+  ];
 
   // Calculate overall average quiz score
   const quizScores = currentUser?.quizScores || {};
   const quizScoreValues = Object.values(quizScores);
-  const avgQuizScore =
-    quizScoreValues.length > 0
-      ? Math.round(
-          quizScoreValues.reduce((a, b) => a + b, 0) / quizScoreValues.length
-        )
-      : 95;
+  const hasQuizScores = quizScoreValues.length > 0;
+  const avgQuizScore = hasQuizScores
+    ? Math.round(
+        quizScoreValues.reduce((a, b) => a + b, 0) / quizScoreValues.length
+      )
+    : 0;
 
-  const activeCourse = enrolledCourses[0] || courses[0];
+  const activeCourse = enrolledCourses[0] || null;
 
   return (
     <div className="space-y-8">
@@ -87,12 +93,19 @@ export default function UserDashboard() {
             </p>
           </div>
 
-          {activeCourse && (
+          {activeCourse ? (
             <Link
               href={`/user/learn/${activeCourse.id}`}
               className="inline-flex items-center gap-2 rounded-2xl bg-card px-5 py-3 text-xs font-bold text-primary shadow-lg transition-transform hover:scale-105"
             >
               <PlayCircle className="h-4 w-4" /> Resume {activeCourse.title.slice(0, 18)}…
+            </Link>
+          ) : (
+            <Link
+              href="/courses"
+              className="inline-flex items-center gap-2 rounded-2xl bg-card px-5 py-3 text-xs font-bold text-primary shadow-lg transition-transform hover:scale-105"
+            >
+              <BookOpen className="h-4 w-4" /> Explore Courses
             </Link>
           )}
         </div>
@@ -119,7 +132,9 @@ export default function UserDashboard() {
             </span>
           </div>
           <p className="mt-3 text-2xl font-extrabold text-foreground">{completedLessonCount}</p>
-          <p className="mt-1 text-[11px] text-emerald-600 font-medium">+2 finished this week</p>
+          <p className="mt-1 text-[11px] text-muted-foreground font-medium">
+            {completedLessonCount > 0 ? `${completedLessonCount} completed` : "No lessons finished yet"}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -129,7 +144,7 @@ export default function UserDashboard() {
               <Flame className="h-4 w-4 fill-amber-500" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">{currentUser.streakDays} Days</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{currentUser.streakDays || 1} Days</p>
           <p className="mt-1 text-[11px] text-amber-600 font-medium">Keep it going tomorrow!</p>
         </div>
 
@@ -140,8 +155,10 @@ export default function UserDashboard() {
               <Zap className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">{avgQuizScore}%</p>
-          <p className="mt-1 text-[11px] text-blue-600 font-medium">Top 5% of class</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{hasQuizScores ? `${avgQuizScore}%` : "—"}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground font-medium">
+            {hasQuizScores ? "Across completed quizzes" : "No quizzes taken yet"}
+          </p>
         </div>
       </div>
 
@@ -302,17 +319,23 @@ export default function UserDashboard() {
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div>
-                <p className="text-xl font-extrabold text-foreground">6h 45m</p>
+                <p className="text-xl font-extrabold text-foreground">{formattedStudyTime}</p>
                 <p className="text-[11px] text-muted-foreground">Total study time</p>
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
-                <TrendingUp className="h-3.5 w-3.5" /> +24% vs last week
-              </span>
+              {totalMinutes > 0 ? (
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                  <TrendingUp className="h-3.5 w-3.5" /> Active Learner
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                  Start lessons to log hours
+                </span>
+              )}
             </div>
 
             <div className="mt-4 h-44 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={studyData}>
+                <BarChart data={dynamicStudyData}>
                   <XAxis dataKey="day" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} unit="m" />
                   <Tooltip

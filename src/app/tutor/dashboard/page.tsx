@@ -24,15 +24,6 @@ import {
 } from "recharts";
 import { useAppStore } from "@/lib/store";
 
-const revenueData = [
-  { month: "May", revenue: 8200 },
-  { month: "Jun", revenue: 9400 },
-  { month: "Jul", revenue: 11200 },
-  { month: "Aug", revenue: 12800 },
-  { month: "Sep", revenue: 13900 },
-  { month: "Oct", revenue: 14850 },
-];
-
 export default function TutorDashboard() {
   const { currentUser, courses, reviews } = useAppStore();
 
@@ -40,13 +31,31 @@ export default function TutorDashboard() {
     ? courses.filter(
         (c) =>
           c.instructor.id === currentUser.id ||
-          c.instructor.name === currentUser.name ||
-          currentUser.role === "tutor"
+          c.instructor.name === currentUser.name
       )
     : [];
 
-  const totalStudents = myCourses.reduce((sum, c) => sum + c.enrolledCount, 0) || 5460;
-  const pendingReviews = reviews.filter((r) => r.status === "pending");
+  const totalStudents = myCourses.reduce((sum, c) => sum + (c.enrolledCount || 0), 0);
+  const totalGross = myCourses.reduce((sum, c) => sum + (c.enrolledCount || 0) * (c.price || 0), 0);
+  const tutorEarnings = Math.round(totalGross * 0.85);
+
+  const ratedCourses = myCourses.filter((c) => c.rating > 0);
+  const avgRating = ratedCourses.length > 0
+    ? (ratedCourses.reduce((sum, c) => sum + c.rating, 0) / ratedCourses.length).toFixed(1)
+    : "0.0";
+  const totalReviewsCount = myCourses.reduce((sum, c) => sum + (c.reviewCount || 0), 0);
+
+  const myCourseIds = myCourses.map((c) => c.id);
+  const myPendingReviews = reviews.filter(
+    (r) => r.status === "pending" && (currentUser?.role === "admin" || myCourseIds.includes(r.courseId))
+  );
+
+  const monthNames = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov"];
+  const currentMonth = new Date().toLocaleString("en-US", { month: "short" });
+  const dynamicRevenueData = monthNames.map((m) => ({
+    month: m,
+    revenue: m === currentMonth ? tutorEarnings : 0,
+  }));
 
   return (
     <div className="space-y-8">
@@ -81,9 +90,9 @@ export default function TutorDashboard() {
               <DollarSign className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">₹1,25,000</p>
-          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
-            <TrendingUp className="h-3 w-3" /> +18.4% this month
+          <p className="mt-3 text-2xl font-extrabold text-foreground">₹{tutorEarnings.toLocaleString("en-IN")}</p>
+          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
+            {tutorEarnings > 0 ? "85% verified instructor royalty" : "No course sales yet"}
           </span>
         </div>
 
@@ -94,8 +103,10 @@ export default function TutorDashboard() {
               <Users className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">{totalStudents.toLocaleString()}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">Across all courses</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{totalStudents}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {totalStudents === 1 ? "1 enrolled student" : `${totalStudents} enrolled students`}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -105,8 +116,10 @@ export default function TutorDashboard() {
               <Star className="h-4 w-4 fill-amber-500" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">4.92 ★</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">From 617 verified reviews</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{avgRating} ★</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {totalReviewsCount > 0 ? `From ${totalReviewsCount} verified review${totalReviewsCount === 1 ? "" : "s"}` : "No ratings yet"}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -116,12 +129,12 @@ export default function TutorDashboard() {
               <FileCheck className="h-4 w-4" />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-foreground">{pendingReviews.length}</p>
+          <p className="mt-3 text-2xl font-extrabold text-foreground">{myPendingReviews.length}</p>
           <Link
             href="/tutor/reviews"
             className="mt-1 block text-[11px] font-semibold text-blue-600 hover:underline"
           >
-            Review submissions &rarr;
+            {myPendingReviews.length > 0 ? "Review submissions →" : "All graded →"}
           </Link>
         </div>
       </div>
@@ -134,7 +147,7 @@ export default function TutorDashboard() {
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center border-b border-border/60 pb-4">
               <div>
                 <h2 className="text-base font-bold text-foreground">Monthly Instructor Revenue</h2>
-                <p className="text-xs text-muted-foreground">6-month payout growth trajectory</p>
+                <p className="text-xs text-muted-foreground">Real-time payout analytics</p>
               </div>
               <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600">
                 85% Platform Royalty
@@ -143,7 +156,7 @@ export default function TutorDashboard() {
 
             <div className="mt-6 h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
+                <AreaChart data={dynamicRevenueData}>
                   <defs>
                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4} />
@@ -177,34 +190,42 @@ export default function TutorDashboard() {
             </div>
 
             <div className="mt-4 divide-y divide-border/60">
-              {myCourses.slice(0, 3).map((c) => (
-                <div key={c.id} className="flex items-center justify-between py-3.5">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-foreground">{c.title}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                          c.status === "published"
-                            ? "bg-emerald-500/10 text-emerald-600"
-                            : "bg-amber-500/10 text-amber-600"
-                        }`}
-                      >
-                        {c.status.replace("_", " ").toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {c.enrolledCount.toLocaleString()} students • ₹{c.price} • {c.level}
-                    </p>
-                  </div>
-
-                  <Link
-                    href={`/user/learn/${c.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
-                  >
-                    <Eye className="h-3.5 w-3.5" /> Preview Course
-                  </Link>
+              {myCourses.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground space-y-2">
+                  <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/30" />
+                  <p className="font-bold text-foreground">No courses created yet</p>
+                  <p>Click "Create New Course" above to publish your first curriculum.</p>
                 </div>
-              ))}
+              ) : (
+                myCourses.slice(0, 3).map((c) => (
+                  <div key={c.id} className="flex items-center justify-between py-3.5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-foreground">{c.title}</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                            c.status === "published"
+                              ? "bg-emerald-500/10 text-emerald-600"
+                              : "bg-amber-500/10 text-amber-600"
+                          }`}
+                        >
+                          {c.status.replace("_", " ").toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {c.enrolledCount.toLocaleString()} students • ₹{c.price} • {c.level}
+                      </p>
+                    </div>
+
+                    <Link
+                      href={`/user/learn/${c.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Preview Course
+                    </Link>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -215,7 +236,7 @@ export default function TutorDashboard() {
             <div className="flex items-center justify-between border-b border-border/60 pb-4">
               <div>
                 <h2 className="text-base font-bold text-foreground">Submissions to Grade</h2>
-                <p className="text-xs text-muted-foreground">{pendingReviews.length} pending</p>
+                <p className="text-xs text-muted-foreground">{myPendingReviews.length} pending</p>
               </div>
               <Link
                 href="/tutor/reviews"
@@ -226,7 +247,7 @@ export default function TutorDashboard() {
             </div>
 
             <div className="mt-4 space-y-3">
-              {pendingReviews.map((rev) => (
+              {myPendingReviews.map((rev) => (
                 <div key={rev.id} className="rounded-2xl border border-border/80 bg-muted/30 p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-foreground">{rev.studentName}</span>
@@ -245,7 +266,7 @@ export default function TutorDashboard() {
                 </div>
               ))}
 
-              {pendingReviews.length === 0 && (
+              {myPendingReviews.length === 0 && (
                 <div className="py-8 text-center text-xs text-muted-foreground">
                   <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500/60" />
                   <p className="mt-2 font-bold text-foreground">All caught up!</p>

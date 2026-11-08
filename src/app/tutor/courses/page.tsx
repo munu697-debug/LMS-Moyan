@@ -24,8 +24,7 @@ export default function TutorCoursesPage() {
     ? courses.filter(
         (c) =>
           c.instructor.id === currentUser.id ||
-          c.instructor.name === currentUser.name ||
-          currentUser.role === "tutor"
+          c.instructor.name === currentUser.name
       )
     : [];
 

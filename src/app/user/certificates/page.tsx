@@ -17,7 +17,7 @@ import { useAppStore, Certificate } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function CertificatesPage() {
-  const { currentUser } = useAppStore();
+  const { currentUser, courses } = useAppStore();
   const certificates = currentUser?.certificates || [];
 
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(
@@ -175,7 +175,9 @@ export default function CertificatesPage() {
                   </div>
 
                   <div className="text-right">
-                    <p className="font-serif italic text-foreground text-sm font-bold">Dr. Elena Vance</p>
+                    <p className="font-serif italic text-foreground text-sm font-bold">
+                      {courses.find((c) => c.id === selectedCert.courseId)?.instructor?.name || "Verified Faculty Instructor"}
+                    </p>
                     <p className="text-[10px]">Lead Curriculum Director</p>
                   </div>
                 </div>
