@@ -234,9 +234,11 @@ export default function AdminCoursesPage() {
 
   const handleDeleteCourse = () => {
     if (!courseToDelete) return;
-    deleteCourse(courseToDelete.id);
-    toast.success(`"${courseToDelete.title}" has been permanently deleted from catalog.`);
+    const targetTitle = courseToDelete.title;
+    const targetId = courseToDelete.id;
+    deleteCourse(targetId);
     setCourseToDelete(null);
+    toast.success(`"${targetTitle}" has been permanently deleted from catalog.`);
   };
 
   const handleCreateCourseSubmit = (e: React.FormEvent) => {

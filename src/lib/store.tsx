@@ -405,6 +405,17 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 const STORAGE_KEY = "moyan_learn_platform_state_v4";
+const DELETED_COURSES_KEY = "moyan_deleted_courses_v1";
+
+function getDeletedCourseIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_COURSES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
 
 // Ensure Firebase Auth session exists so writes to Realtime Database succeed
 async function ensureFirebaseAuth(user?: User | null) {
@@ -427,7 +438,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [courses, setCourses] = useState<Course[]>(INITIAL_COURSES);
+  const [courses, setCourses] = useState<Course[]>(() => {
+    const deleted = getDeletedCourseIds();
+    return INITIAL_COURSES.filter((c) => !deleted.includes(c.id));
+  });
   const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
   const [reviews, setReviews] = useState<SubmissionReview[]>(INITIAL_REVIEWS);
   const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>([]);
@@ -473,12 +487,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setUsers(updatedUsers);
         }
         if (parsed.courses && Array.isArray(parsed.courses)) {
-          const updatedCourses = parsed.courses.map((c: Course) => {
-            if (c.price === 49) return { ...c, price: 2999 };
-            if (c.price === 79) return { ...c, price: 4999 };
-            if (c.price === 99) return { ...c, price: 6999 };
-            return c;
-          });
+          const deleted = getDeletedCourseIds();
+          const updatedCourses = parsed.courses
+            .filter((c: Course) => !deleted.includes(c.id))
+            .map((c: Course) => {
+              if (c.price === 49) return { ...c, price: 2999 };
+              if (c.price === 79) return { ...c, price: 4999 };
+              if (c.price === 99) return { ...c, price: 6999 };
+              return c;
+            });
           setCourses(updatedCourses);
         }
         if (parsed.categories && Array.isArray(parsed.categories)) {
@@ -543,10 +560,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } else if (typeof val === "object" && val !== null) {
             list = Object.values(val);
           }
-          if (list.length > 0) {
-            setCourses(list);
-            setIsRealtimeConnected(true);
-          }
+          const deleted = getDeletedCourseIds();
+          const activeList = list.filter((c) => !deleted.includes(c.id));
+          setCourses(activeList);
+          setIsRealtimeConnected(true);
         } else {
           // Seed INITIAL_COURSES to RTDB so backend has full default catalog
           ensureFirebaseAuth().then(() => {
@@ -1209,7 +1226,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteCourse = (courseId: string) => {
+    // 1. Immediately record in persistent deletedCourseIds tombstone
+    let nextDeleted: string[] = [];
+    try {
+      const existing = getDeletedCourseIds();
+      nextDeleted = Array.from(new Set([...existing, courseId]));
+      localStorage.setItem(DELETED_COURSES_KEY, JSON.stringify(nextDeleted));
+    } catch (e) {
+      nextDeleted = [courseId];
+    }
+
+    // 2. Immediately remove from React state
     setCourses((prev) => prev.filter((c) => c.id !== courseId));
+
+    // 3. Immediately persist updated courses in STORAGE_KEY
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.courses = (parsed.courses || []).filter((c: any) => c.id !== courseId);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      }
+    } catch (e) {}
+
+    // 4. Attempt to remove from RTDB
     if (rtdb) {
       ensureFirebaseAuth(currentUser).then(() => {
         rtdbRemove(ref(rtdb, `courses/${courseId}`)).catch((err) => {
