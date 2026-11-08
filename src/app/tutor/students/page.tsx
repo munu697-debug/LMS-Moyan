@@ -66,8 +66,15 @@ export default function TutorStudentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {filtered.map((s) => (
-                <tr key={s.id} className="hover:bg-muted/30 transition-colors">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-xs text-muted-foreground">
+                    No student learners found. When students register and enroll in courses, they will appear here.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((s) => (
+                  <tr key={s.id} className="hover:bg-muted/30 transition-colors">
                   <td className="p-4 pl-6">
                     <div className="flex items-center gap-3">
                       <img
@@ -110,7 +117,7 @@ export default function TutorStudentsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

@@ -121,7 +121,7 @@ export default function TutorReviewsPage() {
         </div>
 
         {/* Right Active Grading Panel */}
-        {activeReview && (
+        {activeReview ? (
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8 lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between border-b border-border/60 pb-4">
               <div>
@@ -194,6 +194,12 @@ export default function TutorReviewsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card p-12 text-center text-xs text-muted-foreground lg:col-span-2 space-y-2">
+            <FileCheck className="h-8 w-8 text-muted-foreground/50" />
+            <p className="font-semibold text-foreground">No Assignment Selected</p>
+            <p>Select a student submission from the left list to review and assign grades.</p>
           </div>
         )}
       </div>

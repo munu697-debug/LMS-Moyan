@@ -136,7 +136,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    toast.success(`Password for ${passwordUserModal.name} successfully updated to: "${newPassword}" 🔑`);
+    toast.success(`Password for ${passwordUserModal.name} successfully updated! 🔑`);
     setPasswordUserModal(null);
     setNewPassword("");
     setShowPassword(false);
