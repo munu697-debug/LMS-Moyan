@@ -600,8 +600,26 @@ export default function AdminCoursesPage() {
         })}
 
         {filtered.length === 0 && (
-          <div className="rounded-3xl border border-dashed border-border p-12 text-center text-xs text-muted-foreground">
-            No courses match the selected status filter.
+          <div className="rounded-3xl border border-dashed border-border p-16 text-center space-y-3">
+            <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/30" />
+            <h3 className="text-base font-bold text-foreground">
+              {courses.length === 0 ? "No courses in catalog yet" : "No courses match the selected status filter"}
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              {courses.length === 0
+                ? "All demo courses have been cleared. Click below to create and publish your first live course."
+                : "Try selecting a different filter tab above to view other courses."}
+            </p>
+            {courses.length === 0 && (
+              <div className="pt-2">
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-purple-700 transition-transform hover:scale-105 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" /> Create First Course
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
