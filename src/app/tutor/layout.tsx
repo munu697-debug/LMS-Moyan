@@ -120,14 +120,45 @@ export default function TutorLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { label: "Studio Dashboard", href: "/tutor/dashboard", icon: LayoutDashboard },
-    { label: "My Courses", href: "/tutor/courses", icon: BookOpen, badge: myCoursesCount || 2 },
+    { label: "My Courses", href: "/tutor/courses", icon: BookOpen, badge: myCoursesCount },
     { label: "Create New Course", href: "/tutor/courses/new", icon: PlusCircle },
     { label: "Assignment Reviews", href: "/tutor/reviews", icon: FileCheck, badge: pendingReviewsCount },
     { label: "Enrolled Students", href: "/tutor/students", icon: Users },
   ];
 
   return (
-    <div className="flex min-h-[calc(100vh-65px)] bg-muted/20">
+    <div className="flex min-h-[calc(100vh-65px)] flex-col md:flex-row bg-muted/20">
+      {/* Mobile Sticky Sub-Nav Bar */}
+      <div className="sticky top-[61px] z-30 flex items-center gap-2 overflow-x-auto border-b border-border/80 bg-background/95 px-4 py-2.5 backdrop-blur-md md:hidden no-scrollbar">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+                isActive
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "border border-border/60 bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span>{item.label}</span>
+              {item.badge !== undefined && item.badge > 0 && (
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[9px] font-extrabold ${
+                    isActive ? "bg-white/25 text-white" : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+
       {/* Desktop Tutor Sidebar */}
       <aside className="hidden w-64 flex-col border-r border-border/70 bg-card/70 p-5 backdrop-blur-md md:flex">
         {/* Tutor Profile Header */}

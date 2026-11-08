@@ -16,15 +16,56 @@ import {
   LogIn,
   LogOut,
   UserPlus,
+  BookOpen,
+  Users,
+  MessageSquare,
+  Sliders,
+  PlusCircle,
+  FileCheck,
+  Zap,
+  Trophy,
 } from "lucide-react";
 import { useAppStore, isUserAdmin } from "@/lib/store";
 import { toast } from "sonner";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { currentUser, logout } = useAppStore();
+  const { currentUser, logout, courses, users, reviews } = useAppStore();
   const pathname = usePathname();
   const router = useRouter();
+
+  const isAdmin = currentUser?.role === "admin" || (currentUser && isUserAdmin(currentUser.email));
+  const isTutor = currentUser?.role === "tutor";
+
+  const pendingCoursesCount = courses.filter((c) => c.status === "pending_approval").length;
+  const pendingTutorsCount = users.filter((u) => u.role === "tutor" && u.status === "pending_approval").length;
+  const pendingReviewsCount = reviews.filter((r) => r.status === "pending").length;
+  const myCoursesCount = currentUser ? courses.filter((c) => c.instructor.id === currentUser.id || c.instructor.name === currentUser.name).length : 0;
+  const enrolledCount = currentUser?.enrolledCourseIds?.length || 0;
+  const certCount = currentUser?.certificates?.length || 0;
+
+  const adminNavItems = [
+    { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Course Approvals", href: "/admin/courses", icon: BookOpen, badge: pendingCoursesCount },
+    { label: "User Management", href: "/admin/users", icon: Users, badge: pendingTutorsCount > 0 ? pendingTutorsCount : undefined },
+    { label: "User Reviews", href: "/admin/reviews", icon: MessageSquare },
+    { label: "System Settings", href: "/admin/settings", icon: Sliders },
+  ];
+
+  const tutorNavItems = [
+    { label: "Studio Dashboard", href: "/tutor/dashboard", icon: LayoutDashboard },
+    { label: "My Courses", href: "/tutor/courses", icon: BookOpen, badge: myCoursesCount },
+    { label: "Create New Course", href: "/tutor/courses/new", icon: PlusCircle },
+    { label: "Assignment Reviews", href: "/tutor/reviews", icon: FileCheck, badge: pendingReviewsCount },
+    { label: "Enrolled Students", href: "/tutor/students", icon: Users },
+  ];
+
+  const studentNavItems = [
+    { label: "Dashboard", href: "/user/dashboard", icon: LayoutDashboard },
+    { label: "My Enrolled Courses", href: "/user/courses", icon: BookOpen, badge: enrolledCount },
+    { label: "AI Practice Quizzes", href: "/user/quizzes", icon: Zap },
+    { label: "Certificates", href: "/user/certificates", icon: Trophy, badge: certCount },
+  ];
 
   const getDashboardLink = () => {
     if (!currentUser) return "/login";
@@ -261,31 +302,112 @@ export function Navbar() {
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 pt-2">
+              {/* Role-Specific Navigation Menu */}
+              {currentUser && (
+                <div className="border-b border-border/60 pb-3 pt-1">
+                  <div className="flex items-center justify-between px-2 pb-2">
+                    <span
+                      className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                        isAdmin
+                          ? "text-purple-600 dark:text-purple-400"
+                          : isTutor
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-primary"
+                      }`}
+                    >
+                      {isAdmin
+                        ? "Administration Console"
+                        : isTutor
+                        ? "Instructor Studio"
+                        : "Student Workspace"}
+                    </span>
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      {roleMeta.label} Menu
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    {(isAdmin
+                      ? adminNavItems
+                      : isTutor
+                      ? tutorNavItems
+                      : studentNavItems
+                    ).map((item) => {
+                      const isActive = pathname === item.href;
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                            isActive
+                              ? isAdmin
+                                ? "bg-purple-600 text-white shadow-sm font-bold"
+                                : isTutor
+                                ? "bg-blue-600 text-white shadow-sm font-bold"
+                                : "bg-primary text-primary-foreground shadow-sm font-bold"
+                              : "text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Icon className="h-4 w-4" />
+                            <span>{item.label}</span>
+                          </div>
+                          {item.badge !== undefined && item.badge > 0 && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                                isActive
+                                  ? "bg-white/20 text-white"
+                                  : isAdmin
+                                  ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                  : isTutor
+                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                  : "bg-primary/10 text-primary"
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* General Platform Navigation */}
+              <div className="flex flex-col gap-1 pt-1">
+                <span className="px-2 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  General
+                </span>
                 <Link
                   href="/"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors hover:bg-muted ${
+                    pathname === "/" ? "bg-muted font-bold text-primary" : "text-foreground"
+                  }`}
                 >
                   Home
                 </Link>
                 <Link
                   href="/courses"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted"
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors hover:bg-muted ${
+                    pathname.startsWith("/courses")
+                      ? "bg-muted font-bold text-primary"
+                      : "text-foreground"
+                  }`}
                 >
                   Courses Catalog
                 </Link>
-
-                {currentUser && (
-                  <Link
-                    href={getDashboardLink()}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="mt-2 flex items-center justify-center gap-2 rounded-full bg-gradient-primary py-3 text-sm font-semibold text-primary-foreground shadow-elegant"
-                  >
-                    Open {roleMeta.label} Panel <ArrowRight className="h-4 w-4" />
-                  </Link>
-                )}
+                <Link
+                  href="/#features"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-xl px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                >
+                  Platform Features
+                </Link>
               </div>
             </div>
           </motion.div>
