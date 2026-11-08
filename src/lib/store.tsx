@@ -461,6 +461,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  // Live Server Announcement Synchronization (syncs across all browsers, students, tutors, and visitors)
+  useEffect(() => {
+    let isMounted = true;
+    const syncAnnouncement = () => {
+      fetch("/api/announcement", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (isMounted && data && typeof data.message === "string") {
+            setAnnouncement((prev) => {
+              if (
+                prev.message === data.message &&
+                prev.active === data.active &&
+                prev.type === data.type
+              ) {
+                return prev;
+              }
+              return {
+                message: data.message,
+                active: typeof data.active === "boolean" ? data.active : true,
+                type: data.type || "info",
+              };
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    syncAnnouncement();
+    const interval = setInterval(syncAnnouncement, 6000);
+    window.addEventListener("focus", syncAnnouncement);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", syncAnnouncement);
+    };
+  }, []);
+
   // Sync Firebase auth state
   useEffect(() => {
     if (!auth) return;
@@ -1258,7 +1296,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
     } catch (e) {}
 
-    // 3. Sync to Firebase Realtime Database
+    // 3. Persist to Next.js server API (syncs to all devices & browsers)
+    fetch("/api/announcement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    }).catch((err) => console.warn("API announcement sync error:", err));
+
+    // 4. Sync to Firebase Realtime Database
     if (rtdb) {
       ensureFirebaseAuth(currentUser).then(() => {
         set(ref(rtdb, "announcement"), updated).catch((err) => {
