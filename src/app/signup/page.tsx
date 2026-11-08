@@ -14,7 +14,7 @@ import {
   Clock,
   ShieldCheck,
 } from "lucide-react";
-import { useAppStore, UserRole } from "@/lib/store";
+import { useAppStore, UserRole, isUserAdmin } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function SignUpPage() {
@@ -55,12 +55,13 @@ export default function SignUpPage() {
       return;
     }
 
-    if (result.isPendingApproval || role === "tutor") {
+    if (result.isPendingApproval || (!isUserAdmin(email) && role === "tutor")) {
       setShowPendingModal(true);
       return;
     }
 
-    const dest = "/user/dashboard";
+    const isAdmin = isUserAdmin(email);
+    const dest = isAdmin ? "/admin/dashboard" : "/user/dashboard";
     toast.success(`Account created! Welcome to Moyan Learn, ${name.split(" ")[0]}! 🎉`);
     window.location.href = dest;
   };
@@ -84,12 +85,13 @@ export default function SignUpPage() {
       return;
     }
 
-    if (result.isPendingApproval || role === "tutor") {
+    const isAdmin = result.role === "admin";
+    if (!isAdmin && (result.isPendingApproval || role === "tutor")) {
       setShowPendingModal(true);
       return;
     }
 
-    const dest = "/user/dashboard";
+    const dest = isAdmin ? "/admin/dashboard" : "/user/dashboard";
     toast.success("Account connected with Google! 🎉");
     window.location.href = dest;
   };

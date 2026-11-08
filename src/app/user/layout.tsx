@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   GraduationCap,
   BookOpen,
@@ -15,17 +15,33 @@ import {
   Flame,
   LogIn,
 } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, isUserAdmin } from "@/lib/store";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { currentUser, isHydrated } = useAppStore();
+
+  useEffect(() => {
+    if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email))) {
+      router.replace("/admin/dashboard");
+    }
+  }, [currentUser, router]);
 
   if (!isHydrated) {
     return (
       <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center p-6 text-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         <p className="mt-4 text-xs font-semibold text-muted-foreground">Loading your Student Portal...</p>
+      </div>
+    );
+  }
+
+  if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email))) {
+    return (
+      <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center p-6 text-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="mt-4 text-xs font-semibold text-muted-foreground">Redirecting to Admin Portal...</p>
       </div>
     );
   }

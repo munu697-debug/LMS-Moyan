@@ -333,8 +333,21 @@ const INITIAL_COURSES: Course[] = [
   },
 ];
 
-const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").trim().toLowerCase();
-const ADMIN_PASSWORD = (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "").trim();
+export const ADMIN_EMAIL = (
+  process.env.NEXT_PUBLIC_ADMIN_EMAIL || "moyanhub@gmail.com"
+).trim().toLowerCase();
+export const ADMIN_PASSWORD = (
+  process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "moyan@7078"
+).trim();
+
+export const isUserAdmin = (email?: string | null): boolean => {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return (
+    normalized === "moyanhub@gmail.com" ||
+    (Boolean(ADMIN_EMAIL) && normalized === ADMIN_EMAIL)
+  );
+};
 
 const INITIAL_USERS: User[] = [];
 
@@ -355,7 +368,7 @@ interface AppContextType {
   announcement: { message: string; active: boolean; type: "info" | "warning" | "success" };
   // Auth Actions
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; role?: UserRole; isPendingApproval?: boolean }>;
-  loginWithGoogle: (preferredRole?: UserRole) => Promise<{ success: boolean; error?: string; role?: UserRole; isPendingApproval?: boolean }>;
+  loginWithGoogle: (preferredRole?: UserRole) => Promise<{ success: boolean; error?: string; role?: UserRole; email?: string; isPendingApproval?: boolean }>;
   signup: (data: { name: string; email: string; password?: string; role: UserRole }) => Promise<{ success: boolean; error?: string; isPendingApproval?: boolean }>;
   logout: () => Promise<void>;
   // Core Actions
@@ -437,20 +450,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (parsed.isAuthenticated !== undefined) setIsAuthenticated(parsed.isAuthenticated);
         if (parsed.currentUser) {
           const user = parsed.currentUser;
-          if (ADMIN_EMAIL && user.email.toLowerCase() === ADMIN_EMAIL) {
-            user.name = user.name || "Super Admin";
-            user.role = "admin";
-          }
-          const { password, ...safeCurrentUser } = user;
-          setCurrentUser(safeCurrentUser as User);
+          const isAdmin = isUserAdmin(user.email);
+          const safeCurrentUser: User = {
+            ...user,
+            name: isAdmin ? (user.name && user.name !== "Google User" ? user.name : "Super Admin") : user.name,
+            role: isAdmin ? "admin" : user.role,
+            status: isAdmin ? "active" : user.status,
+          };
+          delete (safeCurrentUser as any).password;
+          setCurrentUser(safeCurrentUser);
         }
         if (parsed.users && Array.isArray(parsed.users)) {
           const updatedUsers = parsed.users.map((u: User) => {
-            const isAdmin = Boolean(ADMIN_EMAIL && u.email.toLowerCase() === ADMIN_EMAIL);
+            const isAdmin = isUserAdmin(u.email);
             const { password, ...safeUser } = u;
             return {
               ...safeUser,
               role: isAdmin ? ("admin" as UserRole) : safeUser.role,
+              status: isAdmin ? "active" : safeUser.status,
             } as User;
           });
           setUsers(updatedUsers);
@@ -479,6 +496,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setIsHydrated(true);
   }, []);
+
+  // Proactively enforce admin status whenever currentUser changes or loads
+  useEffect(() => {
+    if (currentUser && isUserAdmin(currentUser.email) && currentUser.role !== "admin") {
+      const promoted: User = {
+        ...currentUser,
+        role: "admin",
+        status: "active",
+        name: currentUser.name && currentUser.name !== "Google User" ? currentUser.name : "Super Admin",
+      };
+      setCurrentUser(promoted);
+      setUsers((prev) =>
+        prev.map((u) => (isUserAdmin(u.email) ? { ...u, role: "admin", status: "active" } : u))
+      );
+    }
+  }, [currentUser]);
 
   // Persist state
   useEffect(() => {
@@ -605,10 +638,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(true);
           const email = fbUser.email?.toLowerCase() || "";
           setCurrentUser((prev) => {
-            if (prev && prev.email.toLowerCase() === email) return prev;
-            let existing = users.find((u) => u.email.toLowerCase() === email || u.id === fbUser.uid);
-            const isAdminEmail = Boolean(ADMIN_EMAIL && email === ADMIN_EMAIL);
+            const isAdminEmail = isUserAdmin(email);
             if (isAdminEmail) {
+              if (prev && prev.email.toLowerCase() === email && prev.role === "admin") return prev;
+              let existing = users.find((u) => u.email.toLowerCase() === email || u.id === fbUser.uid);
               if (existing) {
                 return { ...existing, role: "admin", status: "active", name: existing.name || "Super Admin" };
               }
@@ -627,6 +660,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
               };
             }
+            if (prev && prev.email.toLowerCase() === email) return prev;
+            let existing = users.find((u) => u.email.toLowerCase() === email || u.id === fbUser.uid);
             if (existing) return existing;
             return {
               id: fbUser.uid,
@@ -651,7 +686,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [users]);
 
-  const currentRole: UserRole = currentUser?.role || "student";
+  const currentRole: UserRole = isUserAdmin(currentUser?.email) ? "admin" : (currentUser?.role || "student");
 
   // Login handler
   const login = async (email: string, password?: string) => {
@@ -674,7 +709,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Validate against stored user records
     let user = users.find((u) => u.email.toLowerCase() === trimmedEmail);
-    const isAdminEmail = Boolean(ADMIN_EMAIL && trimmedEmail === ADMIN_EMAIL);
+    const isAdminEmail = isUserAdmin(trimmedEmail);
 
     if (isAdminEmail) {
       if (password && ADMIN_PASSWORD && password !== ADMIN_PASSWORD && !firebaseSuccess) {
@@ -700,7 +735,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         joinedDate: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
       };
       setUsers((prev) => [user!, ...prev]);
-    } else if (isAdminEmail && user && user.role !== "admin") {
+    } else if (isAdminEmail && user) {
       user = { ...user, role: "admin", status: "active" };
       setUsers((prev) => prev.map((u) => (u.id === user!.id ? user! : u)));
     }
@@ -740,7 +775,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // Check if user already exists
       let user = users.find((u) => u.email.toLowerCase() === email || u.id === fbUser.uid);
-      const isAdminEmail = Boolean(ADMIN_EMAIL && email === ADMIN_EMAIL);
+      const isAdminEmail = isUserAdmin(email);
 
       if (!user) {
         // Create new user record
@@ -772,7 +807,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           status: user.status,
           createdAt: new Date().toISOString(),
         }).catch((err) => console.warn("Firestore sync notice (non-fatal):", err?.message));
-      } else if (isAdminEmail && user.role !== "admin") {
+      } else if (isAdminEmail) {
         user = { ...user, role: "admin", status: "active", name: user.name || "Super Admin" };
         setUsers((prev) => prev.map((u) => (u.id === user!.id ? user! : u)));
       }
@@ -810,7 +845,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
 
-      return { success: true, role: user.role };
+      return { success: true, role: user.role, email: user.email };
     } catch (err: any) {
       console.error("Google Sign-In error:", err);
       let errorMsg = err?.message || "Failed to sign in with Google.";
@@ -862,7 +897,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       console.info("Firebase registration note:", fbErr.message);
     }
 
-    const isAdminEmail = Boolean(ADMIN_EMAIL && trimmedEmail === ADMIN_EMAIL);
+    const isAdminEmail = isUserAdmin(trimmedEmail);
     const assignedRole: UserRole = isAdminEmail ? "admin" : data.role;
     const isTutor = assignedRole === "tutor";
     const newUser: User = {

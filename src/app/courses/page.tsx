@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ArrowRight,
   PlayCircle,
-  Sparkles,
   X,
   Lock,
   LayoutDashboard,
@@ -27,7 +26,6 @@ export default function CoursesCatalogPage() {
     currentUser,
     requestEnrollment,
     enrollmentRequests,
-    isRealtimeConnected,
   } = useAppStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -68,20 +66,6 @@ export default function CoursesCatalogPage() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-10">
       {/* Header */}
       <div className="text-center space-y-3 max-w-2xl mx-auto">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary">
-            <Sparkles className="h-3.5 w-3.5" /> Adaptive Curriculum Marketplace
-          </span>
-          {isRealtimeConnected && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-              </span>
-              Realtime Database Connected
-            </span>
-          )}
-        </div>
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
           Explore AI Learning Paths
         </h1>

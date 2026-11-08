@@ -17,7 +17,7 @@ import {
   LogOut,
   UserPlus,
 } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, isUserAdmin } from "@/lib/store";
 import { toast } from "sonner";
 
 export function Navbar() {
@@ -28,24 +28,23 @@ export function Navbar() {
 
   const getDashboardLink = () => {
     if (!currentUser) return "/login";
-    switch (currentUser.role) {
-      case "tutor":
-        return "/tutor/dashboard";
-      case "admin":
-        return "/admin/dashboard";
-      case "student":
-      default:
-        return "/user/dashboard";
+    if (currentUser.role === "admin" || isUserAdmin(currentUser.email)) {
+      return "/admin/dashboard";
     }
+    if (currentUser.role === "tutor") {
+      return "/tutor/dashboard";
+    }
+    return "/user/dashboard";
   };
 
   const getRoleLabel = () => {
     if (!currentUser) return { label: "", icon: GraduationCap, color: "" };
+    if (currentUser.role === "admin" || isUserAdmin(currentUser.email)) {
+      return { label: "Admin", icon: ShieldCheck, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" };
+    }
     switch (currentUser.role) {
       case "tutor":
         return { label: "Tutor", icon: Sparkles, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
-      case "admin":
-        return { label: "Admin", icon: ShieldCheck, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" };
       case "student":
       default:
         return { label: "Student", icon: GraduationCap, color: "text-primary bg-primary/10 border-primary/20" };
@@ -123,7 +122,7 @@ export function Navbar() {
             <>
               {/* Active User Pill */}
               <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card px-3 py-1.5 shadow-sm">
-                {currentUser.role === "admin" ? (
+                {currentUser.role === "admin" || isUserAdmin(currentUser.email) ? (
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-purple-700 to-indigo-600 text-[10px] font-extrabold text-white shadow-sm">
                     SA
                   </div>
@@ -138,7 +137,7 @@ export function Navbar() {
                 )}
                 <div className="text-left text-xs leading-none">
                   <p className="font-semibold text-foreground truncate max-w-[100px]">
-                    {currentUser.role === "admin" ? "Super Admin" : currentUser.name}
+                    {currentUser.role === "admin" || isUserAdmin(currentUser.email) ? "Super Admin" : currentUser.name}
                   </p>
                   <span className={`mt-0.5 inline-flex items-center gap-1 rounded-md border px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider ${roleMeta.color}`}>
                     <RoleIcon className="h-2.5 w-2.5" />

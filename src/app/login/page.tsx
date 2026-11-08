@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, isUserAdmin } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -48,12 +48,12 @@ export default function LoginPage() {
       return;
     }
 
-    const dest =
-      result.role === "admin"
-        ? "/admin/dashboard"
-        : result.role === "tutor"
-        ? "/tutor/dashboard"
-        : "/user/dashboard";
+    const isAdmin = result.role === "admin" || isUserAdmin(email);
+    const dest = isAdmin
+      ? "/admin/dashboard"
+      : result.role === "tutor"
+      ? "/tutor/dashboard"
+      : "/user/dashboard";
 
     toast.success("Welcome back! 👋");
     window.location.href = dest;
@@ -78,12 +78,12 @@ export default function LoginPage() {
       return;
     }
 
-    const dest =
-      result.role === "admin"
-        ? "/admin/dashboard"
-        : result.role === "tutor"
-        ? "/tutor/dashboard"
-        : "/user/dashboard";
+    const isAdmin = result.role === "admin" || (result.email && isUserAdmin(result.email));
+    const dest = isAdmin
+      ? "/admin/dashboard"
+      : result.role === "tutor"
+      ? "/tutor/dashboard"
+      : "/user/dashboard";
 
     toast.success("Signed in with Google! 👋");
     window.location.href = dest;

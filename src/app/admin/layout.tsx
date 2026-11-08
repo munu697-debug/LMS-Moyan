@@ -15,7 +15,7 @@ import {
   MessageSquare,
   Star,
 } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, isUserAdmin } from "@/lib/store";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -58,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (currentUser.role !== "admin") {
+  if (currentUser.role !== "admin" && !isUserAdmin(currentUser.email)) {
     return (
       <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center p-6 text-center">
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-amber-500/10 text-amber-600">
