@@ -39,7 +39,35 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email)) && !isLearnPage) {
+  if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email))) {
+    if (isLearnPage) {
+      return (
+        <div className="min-h-[calc(100vh-65px)] bg-muted/20">
+          <div className="border-b border-border bg-card/90 px-4 py-2.5 backdrop-blur-md sticky top-[61px] z-30 shadow-2xs">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-purple-500/15 px-3 py-0.5 text-xs font-bold text-purple-600 border border-purple-500/30">
+                  Admin Inspection Mode
+                </span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  Master administrator access to review all video modules, summaries, and curriculum content.
+                </span>
+              </div>
+              <Link
+                href="/admin/courses"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-1.5 text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Return to Course Oversight
+              </Link>
+            </div>
+          </div>
+          <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+            {children}
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center p-6 text-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />

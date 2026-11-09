@@ -166,10 +166,10 @@ export default function LearnCoursePage({ params }: PageProps) {
       {/* Top Breadcrumb & Status */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
-          href="/user/dashboard"
+          href={currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email)) ? "/admin/courses" : "/user/dashboard"}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+          <ArrowLeft className="h-3.5 w-3.5" /> {currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email)) ? "Back to Course Oversight" : "Back to Dashboard"}
         </Link>
         <div className="flex items-center gap-2">
           {!canAccessVideos ? (
