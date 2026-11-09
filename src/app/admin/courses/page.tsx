@@ -1082,9 +1082,9 @@ export default function AdminCoursesPage() {
                   </p>
 
                   <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
-                    <span>Instructor: <strong className="text-foreground">{previewCourse.instructor.name}</strong></span>
-                    <span>• {previewCourse.modules.length} Modules ({previewCourse.modules.flatMap(m => m.lessons).length} Lessons)</span>
-                    <span>• Duration: {previewCourse.duration}</span>
+                    <span>Instructor: <strong className="text-foreground">{previewCourse.instructor?.name || "Instructor"}</strong></span>
+                    <span>• {(previewCourse.modules || []).length} Modules ({(previewCourse.modules || []).flatMap(m => m?.lessons || []).length} Lessons)</span>
+                    <span>• Duration: {previewCourse.duration || "Self-paced"}</span>
                   </div>
                 </div>
               </div>
@@ -1097,33 +1097,33 @@ export default function AdminCoursesPage() {
                   Complete Curriculum Breakdown
                 </h3>
                 <span className="text-xs text-muted-foreground">
-                  {previewCourse.modules.flatMap(m => m.lessons).length} total lessons
+                  {(previewCourse.modules || []).flatMap(m => m?.lessons || []).length} total lessons
                 </span>
               </div>
 
-              {previewCourse.modules.length === 0 ? (
+              {(!previewCourse.modules || previewCourse.modules.length === 0) ? (
                 <div className="rounded-2xl border border-dashed border-border p-8 text-center text-xs text-muted-foreground">
                   No modules or lessons have been uploaded for this course yet.
                 </div>
               ) : (
-                previewCourse.modules.map((mod, modIdx) => (
-                  <div key={mod.id || modIdx} className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                (previewCourse.modules || []).map((mod, modIdx) => (
+                  <div key={mod?.id || modIdx} className="rounded-2xl border border-border bg-card p-4 space-y-3">
                     <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
                       <div className="flex items-center gap-2">
                         <span className="grid h-6 w-6 place-items-center rounded-lg bg-purple-500/10 text-[11px] font-bold text-purple-600">
                           {modIdx + 1}
                         </span>
-                        <h4 className="text-sm font-bold text-foreground">{mod.title}</h4>
+                        <h4 className="text-sm font-bold text-foreground">{mod?.title || `Module ${modIdx + 1}`}</h4>
                       </div>
                       <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                        {mod.lessons.length} {mod.lessons.length === 1 ? "lesson" : "lessons"}
+                        {(mod?.lessons || []).length} {(mod?.lessons || []).length === 1 ? "lesson" : "lessons"}
                       </span>
                     </div>
 
                     <div className="space-y-2">
-                      {mod.lessons.map((lesson, lIdx) => (
+                      {(mod?.lessons || []).map((lesson, lIdx) => (
                         <div
-                          key={lesson.id || lIdx}
+                          key={lesson?.id || lIdx}
                           className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-muted/30 p-3 hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
@@ -1132,14 +1132,14 @@ export default function AdminCoursesPage() {
                             </span>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <h5 className="text-xs font-bold text-foreground truncate">{lesson.title}</h5>
-                                {lesson.videoUrl && (
+                                <h5 className="text-xs font-bold text-foreground truncate">{lesson?.title || `Lesson ${lIdx + 1}`}</h5>
+                                {lesson?.videoUrl && (
                                   <span className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-semibold text-purple-600 bg-purple-500/10 px-1.5 py-0.2 rounded">
                                     <Film className="h-2.5 w-2.5" /> Video Ready
                                   </span>
                                 )}
                               </div>
-                              {lesson.summary && (
+                              {lesson?.summary && (
                                 <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{lesson.summary}</p>
                               )}
                             </div>
@@ -1147,7 +1147,7 @@ export default function AdminCoursesPage() {
 
                           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 text-xs">
                             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                              <Clock className="h-3 w-3" /> {lesson.duration || "10m"}
+                              <Clock className="h-3 w-3" /> {lesson?.duration || "10m"}
                             </span>
                           </div>
                         </div>

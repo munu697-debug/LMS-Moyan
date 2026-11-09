@@ -8,8 +8,11 @@ export interface AnnouncementPayload {
   type: "info" | "warning" | "success";
 }
 
+const RTDB_ANNOUNCEMENT_URL =
+  "https://moyan-classroom-default-rtdb.asia-southeast1.firebasedatabase.app/settings/announcement.json";
+
 let inMemoryAnnouncement: AnnouncementPayload = {
-  message: "🚀 Gemini 2.0 AI Tutor features are now live! Enjoy adaptive course pathways and real-time guidance.",
+  message: "here",
   active: true,
   type: "info",
 };
@@ -57,6 +60,34 @@ function saveAnnouncement(announcement: AnnouncementPayload): void {
 }
 
 export async function GET() {
+  // First attempt to read live announcement from Firebase RTDB (accessible globally across all roles & devices)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const rtdbRes = await fetch(RTDB_ANNOUNCEMENT_URL, {
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    clearTimeout(timeoutId);
+    if (rtdbRes.ok) {
+      const rtdbData = await rtdbRes.json();
+      if (rtdbData && typeof rtdbData === "object" && typeof rtdbData.message === "string") {
+        const fromRtdb: AnnouncementPayload = {
+          message: rtdbData.message,
+          active: typeof rtdbData.active === "boolean" ? rtdbData.active : true,
+          type: ["info", "warning", "success"].includes(rtdbData.type) ? rtdbData.type : "info",
+        };
+        inMemoryAnnouncement = fromRtdb;
+        saveAnnouncement(fromRtdb);
+        return NextResponse.json(fromRtdb, {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          },
+        });
+      }
+    }
+  } catch {}
+
   const current = loadSavedAnnouncement();
   return NextResponse.json(current, {
     headers: {
@@ -82,6 +113,15 @@ export async function POST(request: Request) {
     };
 
     saveAnnouncement(updated);
+
+    // Also attempt write to Firebase RTDB settings
+    try {
+      await fetch(RTDB_ANNOUNCEMENT_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+    } catch {}
 
     return NextResponse.json({
       success: true,

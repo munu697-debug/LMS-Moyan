@@ -64,6 +64,11 @@ function updateUserCourseAccess(req: EnrollmentRequest) {
     const users: User[] = JSON.parse(content);
     if (!Array.isArray(users)) return;
 
+    const courseIds = [req.courseId].filter(Boolean);
+    if (req.courseTitle && req.courseTitle.toLowerCase().includes("vibe coding")) {
+      courseIds.push("course-1794196371812", "course-lovable-vibe-coding");
+    }
+
     let modified = false;
     const updatedUsers = users.map((u) => {
       const matches =
@@ -78,18 +83,18 @@ function updateUserCourseAccess(req: EnrollmentRequest) {
         if (req.status === "approved") {
           return {
             ...u,
-            enrolledCourseIds: Array.from(new Set([...currentEnrolled, req.courseId])),
-            pendingCourseIds: currentPending.filter((id) => id !== req.courseId),
+            enrolledCourseIds: Array.from(new Set([...currentEnrolled, ...courseIds])),
+            pendingCourseIds: currentPending.filter((id) => !courseIds.includes(id)),
           };
         } else if (req.status === "rejected") {
           return {
             ...u,
-            pendingCourseIds: currentPending.filter((id) => id !== req.courseId),
+            pendingCourseIds: currentPending.filter((id) => !courseIds.includes(id)),
           };
         } else if (req.status === "pending") {
           return {
             ...u,
-            pendingCourseIds: Array.from(new Set([...currentPending, req.courseId])),
+            pendingCourseIds: Array.from(new Set([...currentPending, ...courseIds])),
           };
         }
       }
@@ -122,15 +127,15 @@ export async function POST(request: Request) {
     const body = await request.json();
     const current = loadSavedEnrollments();
 
-    // Check if incoming is array or single request
-    let incomingRequests: EnrollmentRequest[] = [];
+    // Check if incoming is array or single request or partial update
+    let incomingRequests: any[] = [];
     if (Array.isArray(body)) {
       incomingRequests = body;
     } else if (body.requests && Array.isArray(body.requests)) {
       incomingRequests = body.requests;
-    } else if (body.id && body.courseId) {
-      incomingRequests = [body as EnrollmentRequest];
-    } else if (body.request) {
+    } else if (body.id) {
+      incomingRequests = [body];
+    } else if (body.request && body.request.id) {
       incomingRequests = [body.request];
     }
 
@@ -148,7 +153,18 @@ export async function POST(request: Request) {
     incomingRequests.forEach((req) => {
       if (req && req.id) {
         const existing = map.get(req.id);
-        const merged = { ...existing, ...req };
+        const merged: EnrollmentRequest = {
+          id: req.id,
+          studentId: req.studentId || existing?.studentId || "",
+          studentName: req.studentName || existing?.studentName || "",
+          studentEmail: req.studentEmail || existing?.studentEmail || "",
+          courseId: req.courseId || existing?.courseId || (req.courseTitle?.toLowerCase().includes("vibe coding") ? "course-1794196371812" : ""),
+          courseTitle: req.courseTitle || existing?.courseTitle || "",
+          courseCategory: req.courseCategory || existing?.courseCategory || "",
+          coursePrice: req.coursePrice ?? existing?.coursePrice ?? 0,
+          status: req.status || existing?.status || "pending",
+          requestedAt: req.requestedAt || existing?.requestedAt || new Date().toLocaleDateString(),
+        };
         map.set(req.id, merged);
         updateUserCourseAccess(merged);
       }

@@ -180,7 +180,8 @@ const INITIAL_USERS: User[] = [
     role: "student",
     status: "active",
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
-    enrolledCourseIds: [],
+    enrolledCourseIds: ["course-1794196371812", "course-lovable-vibe-coding"],
+    pendingCourseIds: [],
     completedLessonIds: [],
     streakDays: 1,
     quizScores: {},
@@ -305,7 +306,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     active: boolean;
     type: "info" | "warning" | "success";
   }>({
-    message: "🚀 Gemini 2.0 AI Tutor features are now live! Enjoy adaptive course pathways and real-time guidance.",
+    message: "here",
     active: true,
     type: "info",
   });
@@ -442,54 +443,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // 2. Live Enrollment Requests listener
-    const enrollRef = ref(rtdb, "enrollmentRequests");
-    const unsubscribeEnroll = onValue(
-      enrollRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const val = snapshot.val();
-          let list: EnrollmentRequest[] = [];
-          if (Array.isArray(val)) {
-            list = val.filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
-          } else if (typeof val === "object" && val !== null) {
-            list = (Object.values(val) as any[]).filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
-          }
-          if (list.length > 0) {
-            setEnrollmentRequests(list);
-          }
+    // 2. Live Enrollment Requests listener (listens on both enrollmentRequests and settings/enrollments)
+    const handleEnrollmentSnapshot = (snapshot: any) => {
+      if (snapshot && snapshot.exists && snapshot.exists()) {
+        const val = snapshot.val();
+        let list: EnrollmentRequest[] = [];
+        if (Array.isArray(val)) {
+          list = val.filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
+        } else if (typeof val === "object" && val !== null) {
+          list = (Object.values(val) as any[]).filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
         }
-      },
-      (err) => {
-        console.warn("RTDB realtime enrollments sync notice:", err);
-      }
-    );
-
-    // 3. Live Global Announcement listener
-    const announcementRef = ref(rtdb, "announcement");
-    const unsubscribeAnnouncement = onValue(
-      announcementRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const val = snapshot.val();
-          if (val && typeof val === "object" && typeof val.message === "string") {
-            setAnnouncement({
-              message: val.message,
-              active: typeof val.active === "boolean" ? val.active : true,
-              type: val.type || "info",
+        if (list.length > 0) {
+          setEnrollmentRequests((prev) => {
+            const map = new Map<string, EnrollmentRequest>();
+            prev.forEach((r) => { if (r?.id) map.set(r.id, r); });
+            list.forEach((r) => {
+              if (r?.id) {
+                const existing = map.get(r.id);
+                // Never let a pending status overwrite an already approved request
+                if (existing?.status === "approved" && r.status === "pending") {
+                  map.set(r.id, { ...r, status: "approved" });
+                } else {
+                  map.set(r.id, r);
+                }
+              }
             });
-          }
+            return Array.from(map.values());
+          });
         }
-      },
-      (err) => {
-        console.warn("RTDB realtime announcement sync notice:", err);
       }
-    );
+    };
+
+    const enrollRef = ref(rtdb, "enrollmentRequests");
+    const unsubscribeEnroll = onValue(enrollRef, handleEnrollmentSnapshot, () => {});
+
+    const enrollSettingsRef = ref(rtdb, "settings/enrollments");
+    const unsubscribeEnrollSettings = onValue(enrollSettingsRef, handleEnrollmentSnapshot, () => {});
+
+    // 3. Live Global Announcement listener (listens on both settings/announcement and announcement)
+    const handleAnnouncementSnapshot = (snapshot: any) => {
+      if (snapshot && snapshot.exists && snapshot.exists()) {
+        const val = snapshot.val();
+        if (val && typeof val === "object" && typeof val.message === "string") {
+          setAnnouncement({
+            message: val.message,
+            active: typeof val.active === "boolean" ? val.active : true,
+            type: ["info", "warning", "success"].includes(val.type) ? val.type : "info",
+          });
+        }
+      }
+    };
+
+    const announcementSettingsRef = ref(rtdb, "settings/announcement");
+    const unsubscribeAnnouncementSettings = onValue(announcementSettingsRef, handleAnnouncementSnapshot, () => {});
+
+    const announcementRef = ref(rtdb, "announcement");
+    const unsubscribeAnnouncement = onValue(announcementRef, handleAnnouncementSnapshot, () => {});
 
     return () => {
       unsubscribeCourses();
       unsubscribeEnroll();
+      unsubscribeEnrollSettings();
       unsubscribeAnnouncement();
+      unsubscribeAnnouncementSettings();
     };
   }, []);
 
@@ -601,14 +617,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (isMounted && data && Array.isArray(data)) {
             setEnrollmentRequests((prev) => {
               const map = new Map<string, EnrollmentRequest>();
-              // First put server requests
-              data.forEach((r) => {
-                if (r && r.id) map.set(r.id, r);
-              });
-              // Keep any local requests not yet on server and push them up
+              // Keep prior local requests in map first
               prev.forEach((r) => {
-                if (r && r.id && !map.has(r.id)) {
-                  map.set(r.id, r);
+                if (r?.id) map.set(r.id, r);
+              });
+              // Merge server requests, never allowing 'pending' to overwrite 'approved'
+              data.forEach((r) => {
+                if (r && r.id) {
+                  const existing = map.get(r.id);
+                  if (existing?.status === "approved" && r.status === "pending") {
+                    map.set(r.id, { ...r, status: "approved" });
+                  } else {
+                    map.set(r.id, r);
+                  }
+                }
+              });
+              // Push any unsynced local requests to server
+              map.forEach((r) => {
+                const onServer = data.find((s) => s.id === r.id);
+                if (!onServer || onServer.status !== r.status) {
                   fetch("/api/enrollments", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -633,6 +660,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", syncEnrollments);
     };
   }, []);
+
+  // Proactively auto-unlock enrolled courses for currentUser when approved in enrollmentRequests
+  useEffect(() => {
+    if (!currentUser || !enrollmentRequests.length) return;
+    const studentEmail = currentUser.email?.toLowerCase();
+    const myApproved = enrollmentRequests.filter(
+      (r) =>
+        r.status === "approved" &&
+        (r.studentId === currentUser.id || (studentEmail && r.studentEmail?.toLowerCase() === studentEmail))
+    );
+    if (!myApproved.length) return;
+
+    const courseIdsToUnlock = new Set<string>(currentUser.enrolledCourseIds || []);
+    let changed = false;
+
+    myApproved.forEach((r) => {
+      if (!courseIdsToUnlock.has(r.courseId)) {
+        courseIdsToUnlock.add(r.courseId);
+        changed = true;
+      }
+      if (r.courseTitle?.toLowerCase().includes("vibe coding")) {
+        ["course-1794196371812", "course-lovable-vibe-coding"].forEach((id) => {
+          if (!courseIdsToUnlock.has(id)) {
+            courseIdsToUnlock.add(id);
+            changed = true;
+          }
+        });
+      }
+    });
+
+    const pendingIds = (currentUser.pendingCourseIds || []).filter(
+      (id) =>
+        !courseIdsToUnlock.has(id) &&
+        !myApproved.some(
+          (r) =>
+            r.courseId === id ||
+            (r.courseTitle?.toLowerCase().includes("vibe coding") &&
+              (id === "course-1794196371812" || id === "course-lovable-vibe-coding"))
+        )
+    );
+
+    if (changed || pendingIds.length !== (currentUser.pendingCourseIds || []).length) {
+      const updatedUser: User = {
+        ...currentUser,
+        enrolledCourseIds: Array.from(courseIdsToUnlock),
+        pendingCourseIds: pendingIds,
+      };
+      setCurrentUser(updatedUser);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id || (studentEmail && u.email?.toLowerCase() === studentEmail)
+            ? updatedUser
+            : u
+        )
+      );
+    }
+  }, [enrollmentRequests, currentUser?.id, currentUser?.email]);
 
   // When currentUser logs in or is restored, sync to server
   useEffect(() => {
@@ -1081,6 +1165,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (rtdb) {
       ensureFirebaseAuth(student).then(() => {
         set(ref(rtdb, `enrollmentRequests/${newRequest.id}`), newRequest).catch(() => {});
+        set(ref(rtdb, `settings/enrollments/${newRequest.id}`), newRequest).catch(() => {});
       });
     }
 
@@ -1095,18 +1180,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       prev.map((r) => (r.id === requestId ? { ...r, status: "approved" as const } : r))
     );
 
+    const vibeCodingIds = ["course-1794196371812", "course-lovable-vibe-coding"];
+    const isVibeCoding =
+      req.courseTitle?.toLowerCase().includes("vibe coding") || vibeCodingIds.includes(req.courseId);
+    const courseIdsToUnlock = isVibeCoding
+      ? Array.from(new Set([req.courseId, ...vibeCodingIds]))
+      : [req.courseId];
+
     // 1. Sync to Server Enrollments API
     fetch("/api/enrollments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: requestId, status: "approved" }),
+      body: JSON.stringify({
+        ...req,
+        id: requestId,
+        status: "approved",
+        courseId: isVibeCoding ? "course-1794196371812" : req.courseId,
+      }),
     }).catch(() => {});
 
     // 2. Sync updated user to server
-    const targetStudent = users.find((u) => u.id === req.studentId);
+    const targetStudent = users.find(
+      (u) =>
+        u.id === req.studentId ||
+        (req.studentEmail && u.email?.toLowerCase() === req.studentEmail.toLowerCase())
+    );
+
     if (targetStudent) {
-      const updatedEnrolled = Array.from(new Set([...(targetStudent.enrolledCourseIds || []), req.courseId]));
-      const updatedPending = (targetStudent.pendingCourseIds || []).filter((id) => id !== req.courseId);
+      const updatedEnrolled = Array.from(
+        new Set([...(targetStudent.enrolledCourseIds || []), ...courseIdsToUnlock])
+      );
+      const updatedPending = (targetStudent.pendingCourseIds || []).filter(
+        (id) => !courseIdsToUnlock.includes(id)
+      );
       fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1120,11 +1226,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setUsers((prev) =>
       prev.map((u) => {
-        if (u.id === req.studentId) {
-          const enrolled = u.enrolledCourseIds.includes(req.courseId)
-            ? u.enrolledCourseIds
-            : [...u.enrolledCourseIds, req.courseId];
-          const pending = (u.pendingCourseIds || []).filter((id) => id !== req.courseId);
+        if (
+          u.id === req.studentId ||
+          (req.studentEmail && u.email?.toLowerCase() === req.studentEmail.toLowerCase())
+        ) {
+          const enrolled = Array.from(new Set([...(u.enrolledCourseIds || []), ...courseIdsToUnlock]));
+          const pending = (u.pendingCourseIds || []).filter((id) => !courseIdsToUnlock.includes(id));
           return { ...u, enrolledCourseIds: enrolled, pendingCourseIds: pending };
         }
         return u;
@@ -1132,25 +1239,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
 
     setCurrentUser((prev) => {
-      if (prev && prev.id === req.studentId) {
-        const enrolled = prev.enrolledCourseIds.includes(req.courseId)
-          ? prev.enrolledCourseIds
-          : [...prev.enrolledCourseIds, req.courseId];
-        const pending = (prev.pendingCourseIds || []).filter((id) => id !== req.courseId);
+      if (
+        prev &&
+        (prev.id === req.studentId ||
+          (req.studentEmail && prev.email?.toLowerCase() === req.studentEmail.toLowerCase()))
+      ) {
+        const enrolled = Array.from(new Set([...(prev.enrolledCourseIds || []), ...courseIdsToUnlock]));
+        const pending = (prev.pendingCourseIds || []).filter((id) => !courseIdsToUnlock.includes(id));
         return { ...prev, enrolledCourseIds: enrolled, pendingCourseIds: pending };
       }
       return prev;
     });
 
     setCourses((prev) =>
-      prev.map((c) => (c.id === req.courseId ? { ...c, enrolledCount: c.enrolledCount + 1 } : c))
+      prev.map((c) =>
+        courseIdsToUnlock.includes(c.id) ? { ...c, enrolledCount: (c.enrolledCount || 0) + 1 } : c
+      )
     );
 
     if (rtdb) {
       ensureFirebaseAuth(currentUser).then(() => {
         rtdbUpdate(ref(rtdb, `enrollmentRequests/${requestId}`), { status: "approved" }).catch(() => {});
-        const currentCount = courses.find((c) => c.id === req.courseId)?.enrolledCount || 0;
-        rtdbUpdate(ref(rtdb, `courses/${req.courseId}`), { enrolledCount: currentCount + 1 }).catch(() => {});
+        rtdbUpdate(ref(rtdb, `settings/enrollments/${requestId}`), { ...req, status: "approved" }).catch(() => {});
+
+        courseIdsToUnlock.forEach((cId) => {
+          const currentCount = courses.find((c) => c.id === cId)?.enrolledCount || 0;
+          rtdbUpdate(ref(rtdb, `courses/${cId}`), { enrolledCount: currentCount + 1 }).catch(() => {});
+          const cleanKey = (req.studentEmail || req.studentId).replace(/[.#$[\]]/g, "_");
+          rtdbUpdate(ref(rtdb, `courses/${cId}/enrolledStudents/${cleanKey}`), {
+            studentId: req.studentId,
+            studentEmail: req.studentEmail,
+            studentName: req.studentName,
+            status: "approved",
+            approvedAt: new Date().toISOString(),
+          }).catch(() => {});
+        });
       });
     }
   };
@@ -1171,7 +1294,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
 
     // 2. Sync updated user to server
-    const targetStudent = users.find((u) => u.id === req.studentId);
+    const targetStudent = users.find(
+      (u) =>
+        u.id === req.studentId ||
+        (req.studentEmail && u.email?.toLowerCase() === req.studentEmail.toLowerCase())
+    );
     if (targetStudent) {
       const updatedPending = (targetStudent.pendingCourseIds || []).filter((id) => id !== req.courseId);
       fetch("/api/users", {
@@ -1186,7 +1313,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setUsers((prev) =>
       prev.map((u) => {
-        if (u.id === req.studentId) {
+        if (
+          u.id === req.studentId ||
+          (req.studentEmail && u.email?.toLowerCase() === req.studentEmail.toLowerCase())
+        ) {
           const pending = (u.pendingCourseIds || []).filter((id) => id !== req.courseId);
           return { ...u, pendingCourseIds: pending };
         }
@@ -1195,7 +1325,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
 
     setCurrentUser((prev) => {
-      if (prev && prev.id === req.studentId) {
+      if (
+        prev &&
+        (prev.id === req.studentId ||
+          (req.studentEmail && prev.email?.toLowerCase() === req.studentEmail.toLowerCase()))
+      ) {
         const pending = (prev.pendingCourseIds || []).filter((id) => id !== req.courseId);
         return { ...prev, pendingCourseIds: pending };
       }
@@ -1205,6 +1339,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (rtdb) {
       ensureFirebaseAuth(currentUser).then(() => {
         rtdbUpdate(ref(rtdb, `enrollmentRequests/${requestId}`), { status: "rejected" }).catch(() => {});
+        rtdbUpdate(ref(rtdb, `settings/enrollments/${requestId}`), { status: "rejected" }).catch(() => {});
       });
     }
   };
@@ -1556,12 +1691,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify(updated),
     }).catch((err) => console.warn("API announcement sync error:", err));
 
-    // 4. Sync to Firebase Realtime Database
+    // 4. Sync to Firebase Realtime Database (writes to both settings/announcement and announcement)
     if (rtdb) {
       ensureFirebaseAuth(currentUser).then(() => {
-        set(ref(rtdb, "announcement"), updated).catch((err) => {
-          console.warn("RTDB realtime announcement sync error:", err);
-        });
+        set(ref(rtdb, "settings/announcement"), updated).catch(() => {});
+        set(ref(rtdb, "announcement"), updated).catch(() => {});
       });
     }
   };

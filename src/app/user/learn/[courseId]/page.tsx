@@ -57,12 +57,43 @@ export default function LearnCoursePage({ params }: PageProps) {
   }
 
   // Enrollment checks
-  const isEnrolled = currentUser?.enrolledCourseIds?.includes(course.id) || false;
-  const isPending =
-    (currentUser?.pendingCourseIds?.includes(course.id) ?? false) ||
-    enrollmentRequests.some(
-      (r) => r.studentId === currentUser?.id && r.courseId === course.id && r.status === "pending"
+  const studentEmail = currentUser?.email?.toLowerCase();
+  const hasApprovedRequest = enrollmentRequests.some((r) => {
+    const emailMatches = Boolean(studentEmail && r.studentEmail?.toLowerCase() === studentEmail);
+    const idMatches = r.studentId === currentUser?.id;
+    const userMatches = idMatches || emailMatches;
+    if (!userMatches || r.status !== "approved") return false;
+
+    const courseIdMatches =
+      r.courseId === course.id ||
+      (course.id.includes("1794196371812") && r.courseId.includes("lovable-vibe-coding")) ||
+      (course.id.includes("lovable-vibe-coding") && r.courseId.includes("1794196371812"));
+    const titleMatches = Boolean(
+      r.courseTitle && course.title && r.courseTitle.toLowerCase().trim() === course.title.toLowerCase().trim()
     );
+    return courseIdMatches || titleMatches;
+  });
+
+  const isEnrolled = (currentUser?.enrolledCourseIds?.includes(course.id) ?? false) || hasApprovedRequest;
+
+  const isPending =
+    !isEnrolled &&
+    ((currentUser?.pendingCourseIds?.includes(course.id) ?? false) ||
+      enrollmentRequests.some((r) => {
+        const emailMatches = Boolean(studentEmail && r.studentEmail?.toLowerCase() === studentEmail);
+        const idMatches = r.studentId === currentUser?.id;
+        const userMatches = idMatches || emailMatches;
+        if (!userMatches || r.status !== "pending") return false;
+
+        const courseIdMatches =
+          r.courseId === course.id ||
+          (course.id.includes("1794196371812") && r.courseId.includes("lovable-vibe-coding")) ||
+          (course.id.includes("lovable-vibe-coding") && r.courseId.includes("1794196371812"));
+        const titleMatches = Boolean(
+          r.courseTitle && course.title && r.courseTitle.toLowerCase().trim() === course.title.toLowerCase().trim()
+        );
+        return courseIdMatches || titleMatches;
+      }));
 
   const canAccessVideos =
     isEnrolled ||

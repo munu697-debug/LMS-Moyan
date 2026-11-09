@@ -30,19 +30,39 @@ export default function UserDashboard() {
 
   if (!currentUser) return null;
 
-  const enrolledCourseIds = currentUser?.enrolledCourseIds || [];
-  const enrolledCourses = courses.filter((c) =>
-    enrolledCourseIds.includes(c.id)
-  );
+  const studentEmail = currentUser?.email?.toLowerCase();
+  const isStudentEnrolledInCourse = (course: (typeof courses)[0]): boolean => {
+    if (currentUser?.enrolledCourseIds?.includes(course.id)) return true;
+    const isApproved = enrollmentRequests.some((r) => {
+      const emailMatches = Boolean(studentEmail && r.studentEmail?.toLowerCase() === studentEmail);
+      const idMatches = r.studentId === currentUser.id;
+      const userMatches = idMatches || emailMatches;
+      if (!userMatches || r.status !== "approved") return false;
+
+      const courseIdMatches =
+        r.courseId === course.id ||
+        (course.id.includes("1794196371812") && r.courseId.includes("lovable-vibe-coding")) ||
+        (course.id.includes("lovable-vibe-coding") && r.courseId.includes("1794196371812"));
+      const titleMatches = Boolean(
+        r.courseTitle && course.title && r.courseTitle.toLowerCase().trim() === course.title.toLowerCase().trim()
+      );
+      return courseIdMatches || titleMatches;
+    });
+    return isApproved;
+  };
+
+  const enrolledCourses = courses.filter((c) => isStudentEnrolledInCourse(c));
 
   const pendingRequests = enrollmentRequests.filter(
-    (r) => r.studentId === currentUser?.id && r.status === "pending"
+    (r) =>
+      (r.studentId === currentUser?.id || (studentEmail && r.studentEmail?.toLowerCase() === studentEmail)) &&
+      r.status === "pending"
   );
   const pendingCourseIdList = Array.from(
     new Set([...(currentUser?.pendingCourseIds || []), ...pendingRequests.map((r) => r.courseId)])
   );
   const pendingCourses = courses.filter(
-    (c) => pendingCourseIdList.includes(c.id) && !enrolledCourseIds.includes(c.id)
+    (c) => pendingCourseIdList.includes(c.id) && !isStudentEnrolledInCourse(c)
   );
 
   const completedLessonCount = currentUser?.completedLessonIds?.length || 0;

@@ -116,7 +116,15 @@ export default function TutorLayout({ children }: { children: React.ReactNode })
   }
 
   const pendingReviewsCount = reviews.filter((r) => r.status === "pending").length;
-  const myCoursesCount = courses.filter((c) => c.instructor.id === currentUser.id || c.instructor.name === currentUser.name).length;
+  const myCourses = courses.filter(
+    (c) =>
+      Boolean(currentUser) &&
+      Boolean(c.instructor) &&
+      (c.instructor.id === currentUser?.id || c.instructor.name === currentUser?.name)
+  );
+  const myCoursesCount = myCourses.length;
+  const totalGross = myCourses.reduce((sum, c) => sum + (c.enrolledCount || 0) * (c.price || 0), 0);
+  const tutorEarnings = Math.round(totalGross * 0.85);
 
   const navItems = [
     { label: "Studio Dashboard", href: "/tutor/dashboard", icon: LayoutDashboard },
@@ -221,10 +229,10 @@ export default function TutorLayout({ children }: { children: React.ReactNode })
         <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-indigo-500/15 p-4 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-muted-foreground">Monthly Earnings</span>
-            <span className="font-extrabold text-blue-600">₹1,25,000</span>
+            <span className="font-extrabold text-blue-600">₹{tutorEarnings.toLocaleString("en-IN")}</span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Next direct payout on Nov 1st.
+            {tutorEarnings > 0 ? "85% verified instructor royalty payout" : "No course earnings yet"}
           </p>
           <Link
             href="/tutor/courses/new"
