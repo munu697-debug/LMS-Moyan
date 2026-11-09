@@ -1,0 +1,14 @@
+[
+  {
+    "id": "enr-munavvir-vibe-coding",
+    "studentId": "student-munavvir",
+    "studentName": "Munavvir",
+    "studentEmail": "munavvir@moyanai.com",
+    "courseId": "course-lovable-vibe-coding",
+    "courseTitle": "Vibe coding",
+    "courseCategory": "Web Development",
+    "coursePrice": 499,
+    "status": "pending",
+    "requestedAt": "Nov 9, 2026, 09:30 AM"
+  }
+]

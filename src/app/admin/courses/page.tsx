@@ -52,6 +52,16 @@ export default function AdminCoursesPage() {
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [previewCourse, setPreviewCourse] = useState<Course | null>(null);
 
+  // Sync tab from URL if ?tab=enrollments
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tab") === "enrollments") {
+        setFilter("enrollments");
+      }
+    }
+  }, []);
+
   // New Category State
   const [isAddingCustomCategory, setIsAddingCustomCategory] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState("");

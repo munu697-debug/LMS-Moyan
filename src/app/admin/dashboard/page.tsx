@@ -186,7 +186,7 @@ export default function AdminDashboard() {
             {pendingCourses.length + pendingEnrollments.length + pendingTutors.length}
           </p>
           <Link
-            href="/admin/courses"
+            href="/admin/courses?tab=enrollments"
             className="mt-1 block text-[11px] font-semibold text-purple-600 hover:underline"
           >
             {pendingCourses.length + pendingEnrollments.length + pendingTutors.length > 0

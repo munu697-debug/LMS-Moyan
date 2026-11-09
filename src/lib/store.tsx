@@ -591,6 +591,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Live Server Enrollments Synchronization (syncs across student browsers, mobile, and admin)
+  useEffect(() => {
+    let isMounted = true;
+    const syncEnrollments = () => {
+      fetch("/api/enrollments", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: EnrollmentRequest[] | null) => {
+          if (isMounted && data && Array.isArray(data)) {
+            setEnrollmentRequests((prev) => {
+              const map = new Map<string, EnrollmentRequest>();
+              // First put server requests
+              data.forEach((r) => {
+                if (r && r.id) map.set(r.id, r);
+              });
+              // Keep any local requests not yet on server and push them up
+              prev.forEach((r) => {
+                if (r && r.id && !map.has(r.id)) {
+                  map.set(r.id, r);
+                  fetch("/api/enrollments", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(r),
+                  }).catch(() => {});
+                }
+              });
+              return Array.from(map.values());
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    syncEnrollments();
+    const interval = setInterval(syncEnrollments, 4000);
+    window.addEventListener("focus", syncEnrollments);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", syncEnrollments);
+    };
+  }, []);
+
   // When currentUser logs in or is restored, sync to server
   useEffect(() => {
     if (currentUser && currentUser.email) {
@@ -1002,6 +1045,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setEnrollmentRequests((prev) => [newRequest, ...prev]);
 
+    // 1. Sync to Server Enrollments API immediately
+    fetch("/api/enrollments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newRequest),
+    }).catch(() => {});
+
+    // 2. Sync updated user to server
+    fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...student,
+        pendingCourseIds: Array.from(new Set([...(student.pendingCourseIds || []), courseId])),
+      }),
+    }).catch(() => {});
+
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === student!.id) {
@@ -1034,6 +1094,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEnrollmentRequests((prev) =>
       prev.map((r) => (r.id === requestId ? { ...r, status: "approved" as const } : r))
     );
+
+    // 1. Sync to Server Enrollments API
+    fetch("/api/enrollments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: requestId, status: "approved" }),
+    }).catch(() => {});
+
+    // 2. Sync updated user to server
+    const targetStudent = users.find((u) => u.id === req.studentId);
+    if (targetStudent) {
+      const updatedEnrolled = Array.from(new Set([...(targetStudent.enrolledCourseIds || []), req.courseId]));
+      const updatedPending = (targetStudent.pendingCourseIds || []).filter((id) => id !== req.courseId);
+      fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...targetStudent,
+          enrolledCourseIds: updatedEnrolled,
+          pendingCourseIds: updatedPending,
+        }),
+      }).catch(() => {});
+    }
 
     setUsers((prev) =>
       prev.map((u) => {
@@ -1079,6 +1162,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEnrollmentRequests((prev) =>
       prev.map((r) => (r.id === requestId ? { ...r, status: "rejected" as const } : r))
     );
+
+    // 1. Sync to Server Enrollments API
+    fetch("/api/enrollments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: requestId, status: "rejected" }),
+    }).catch(() => {});
+
+    // 2. Sync updated user to server
+    const targetStudent = users.find((u) => u.id === req.studentId);
+    if (targetStudent) {
+      const updatedPending = (targetStudent.pendingCourseIds || []).filter((id) => id !== req.courseId);
+      fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...targetStudent,
+          pendingCourseIds: updatedPending,
+        }),
+      }).catch(() => {});
+    }
 
     setUsers((prev) =>
       prev.map((u) => {

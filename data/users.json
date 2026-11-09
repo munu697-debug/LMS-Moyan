@@ -21,6 +21,7 @@
     "status": "active",
     "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
     "enrolledCourseIds": [],
+    "pendingCourseIds": ["course-lovable-vibe-coding"],
     "completedLessonIds": [],
     "streakDays": 1,
     "quizScores": {},
