@@ -32,6 +32,7 @@ export interface Lesson {
   videoUrl: string;
   summary: string;
   content: string;
+  quiz?: QuizQuestion[];
 }
 
 export interface Module {
@@ -1466,17 +1467,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const toggleLessonCompletion = (courseId: string, lessonId: string) => {
     if (!currentUser) return;
+    const isDone = currentUser.completedLessonIds?.includes(lessonId) ?? false;
+    const nextCompleted = isDone
+      ? (currentUser.completedLessonIds || []).filter((id) => id !== lessonId)
+      : [...(currentUser.completedLessonIds || []), lessonId];
+
+    setCurrentUser((prev) => (prev ? { ...prev, completedLessonIds: nextCompleted } : null));
+
     setUsers((prev) =>
       prev.map((u) => {
-        if (u.id === currentUser.id) {
-          const completed = u.completedLessonIds.includes(lessonId)
-            ? u.completedLessonIds.filter((id) => id !== lessonId)
-            : [...u.completedLessonIds, lessonId];
-          return { ...u, completedLessonIds: completed };
+        if (
+          u.id === currentUser.id ||
+          (currentUser.email && u.email?.toLowerCase().trim() === currentUser.email.toLowerCase().trim())
+        ) {
+          return { ...u, completedLessonIds: nextCompleted };
         }
         return u;
       })
     );
+
+    fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...currentUser,
+        completedLessonIds: nextCompleted,
+      }),
+    }).catch(() => {});
   };
 
   const submitQuizScore = (courseId: string, score: number) => {
