@@ -8,7 +8,7 @@ import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "Moyan AI — Next-Gen AI Learning Platform",
   description:
-    "Next-generation AI learning platform with personal Gemini AI tutor, adaptive courses, and dedicated Student, Tutor, and Admin panels.",
+    "Next-generation AI learning platform with personal Moyan AI tutor, adaptive courses, and dedicated Student, Tutor, and Admin panels.",
   icons: {
     icon: [
       { url: "/logo-round.png", type: "image/png" },

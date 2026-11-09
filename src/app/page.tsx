@@ -31,7 +31,7 @@ const fadeUp = {
 };
 
 const features = [
-  { icon: Brain, title: "Gemini AI tutor", text: "Ask anything, 24/7. Explanations that adapt to how you learn in real-time." },
+  { icon: Brain, title: "Moyan AI tutor", text: "Ask anything, 24/7. Explanations that adapt to how you learn in real-time." },
   { icon: BookOpen, title: "Adaptive courses", text: "Lessons reshape themselves around your strengths, pacing, and gaps." },
   { icon: MessageSquare, title: "Instant feedback", text: "Assignments graded in seconds with clear, actionable guidance." },
   { icon: BarChart3, title: "Smart analytics", text: "See progress, streaks, and concept mastery at a single glance." },
@@ -193,7 +193,7 @@ export default function HomePage() {
 
                 <div className="flex flex-col rounded-2xl bg-gradient-primary p-4 text-primary-foreground md:col-span-2">
                   <div className="flex items-center gap-2 text-sm font-semibold">
-                    <Sparkles className="h-4 w-4" /> Gemini AI Tutor
+                    <Sparkles className="h-4 w-4" /> Moyan AI Tutor
                   </div>
                   <div className="mt-4 space-y-3 text-sm">
                     <motion.div
@@ -262,7 +262,7 @@ export default function HomePage() {
       <section className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-20 md:grid-cols-4">
         {[
           ["100%", "Adaptive Curriculum"],
-          ["24/7", "Gemini AI Tutor"],
+          ["24/7", "Moyan AI Tutor"],
           ["Verifiable", "Course Credentials"],
           ["Live", "Interactive Evaluation"],
         ].map(([n, l], i) => (

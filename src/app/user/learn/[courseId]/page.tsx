@@ -325,7 +325,7 @@ export default function LearnCoursePage({ params }: PageProps) {
   >([
     {
       role: "assistant",
-      content: `Hello ${currentUser?.name || "Learner"}! I'm your Gemini AI Tutor for "${course.title}". Ask me any questions about "${activeLesson?.title || 'this lesson'}", request code snippets, or ask for a simple breakdown!`,
+      content: `Hello ${currentUser?.name || "Learner"}! I'm your Moyan AI Tutor for "${course.title}". Ask me any questions about "${activeLesson?.title || 'this lesson'}", request code snippets, or ask for a simple breakdown!`,
       time: "Just now",
     },
   ]);
@@ -1020,7 +1020,7 @@ export default function LearnCoursePage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Gemini AI Tutor Chat Dock */}
+          {/* Moyan AI Tutor Chat Dock */}
           <div className="flex flex-col h-[460px] rounded-3xl border border-primary/30 bg-card p-4 shadow-elegant">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div className="flex items-center gap-2">
@@ -1028,14 +1028,14 @@ export default function LearnCoursePage({ params }: PageProps) {
                   <Sparkles className="h-4 w-4" />
                 </span>
                 <div>
-                  <h3 className="text-xs font-bold text-foreground">Gemini AI Tutor</h3>
+                  <h3 className="text-xs font-bold text-foreground">Moyan AI Tutor</h3>
                   <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online 24/7
                   </span>
                 </div>
               </div>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary">
-                Gemini 2.0 Flash
+                Moyan AI 2.0
               </span>
             </div>
 
@@ -1101,7 +1101,7 @@ export default function LearnCoursePage({ params }: PageProps) {
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Ask Gemini tutor anything..."
+                placeholder="Ask Moyan AI tutor anything..."
                 className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               />
               <button

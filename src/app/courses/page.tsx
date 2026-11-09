@@ -71,7 +71,7 @@ export default function CoursesCatalogPage() {
           Explore AI Learning Paths
         </h1>
         <p className="text-xs text-muted-foreground sm:text-base leading-relaxed">
-          Master generative AI, machine learning calculus, and production copilots with your personal Gemini AI tutor.
+          Master generative AI, machine learning calculus, and production copilots with your personal Moyan AI tutor.
         </p>
       </div>
 

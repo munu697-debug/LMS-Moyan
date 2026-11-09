@@ -189,7 +189,7 @@ export default function AdminSettingsPage() {
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="e.g. 🚀 Gemini 2.0 AI Tutor features are now live! Enjoy adaptive course pathways."
+            placeholder="e.g. 🚀 Moyan AI Tutor features are now live! Enjoy adaptive course pathways."
             className="w-full rounded-2xl border border-input bg-background p-3.5 text-xs sm:text-sm outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
           />
         </div>
