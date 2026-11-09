@@ -198,39 +198,10 @@ export default function LearnCoursePage({ params }: PageProps) {
 
   const isActiveLessonUnlocked = activeLesson ? isLessonUnlocked(activeLesson.id) : true;
 
-  // Checkpoint Quiz Fallback for Lesson 1 (if not yet configured by instructor)
+  // Checkpoint Quiz: strictly use questions authored and added by instructor or admin
   const effectiveLessonQuiz: QuizQuestion[] =
     activeLesson?.quiz && activeLesson.quiz.length > 0
       ? activeLesson.quiz
-      : activeLessonIndex === 0
-      ? [
-          {
-            id: "default-q1",
-            question: "What is the core benefit of prompt-driven vibe coding in Lovable?",
-            options: [
-              "Rapidly builds full-stack web applications with instant live preview and sync",
-              "It only edits CSS static stylesheets",
-              "It converts text into assembly bytecode",
-              "It limits projects to 3 pages maximum",
-            ],
-            correctIndex: 0,
-            explanation:
-              "Lovable turns your natural language intent directly into working full-stack React and Tailwind components with instant visual preview.",
-          },
-          {
-            id: "default-q2",
-            question: "How does the sequential curriculum unlock the next video?",
-            options: [
-              "By waiting 24 hours for manual approval",
-              "By completing the current video lesson checkpoint and passing the quiz",
-              "By clearing browser cookies and restarting",
-              "By purchasing each individual video separately",
-            ],
-            correctIndex: 1,
-            explanation:
-              "Completing the lesson checkpoint proves your understanding of the concepts and automatically unlocks the subsequent video lesson in sequence!",
-          },
-        ]
       : [];
 
   // Quiz state for student
@@ -260,7 +231,7 @@ export default function LearnCoursePage({ params }: PageProps) {
   const [newExplanation, setNewExplanation] = useState("");
 
   const handleOpenQuizModal = () => {
-    setEditingQuestions(activeLesson?.quiz ? [...activeLesson.quiz] : [...effectiveLessonQuiz]);
+    setEditingQuestions(activeLesson?.quiz ? [...activeLesson.quiz] : []);
     setIsQuizModalOpen(true);
   };
 
@@ -480,7 +451,7 @@ export default function LearnCoursePage({ params }: PageProps) {
               className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/40 bg-purple-500/10 px-3.5 py-1 text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 shadow-sm transition-all"
             >
               <FileQuestion className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-              <span>Manage Video Quiz ({activeLesson?.quiz?.length || (activeLessonIndex === 0 ? 2 : 0)})</span>
+              <span>Manage Video Quiz ({activeLesson?.quiz?.length || 0})</span>
             </button>
           )}
 
@@ -709,22 +680,28 @@ export default function LearnCoursePage({ params }: PageProps) {
                 <FileText className="h-3.5 w-3.5" />
                 <span>Overview & Notes</span>
               </button>
-              <button
-                onClick={() => setActiveTab("quiz")}
-                className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-all ${
-                  activeTab === "quiz"
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <HelpCircle className="h-3.5 w-3.5 text-purple-500" />
-                <span>Video Checkpoint Quiz ({effectiveLessonQuiz.length})</span>
-                {isCompleted && (
-                  <span className="ml-1 rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[9px] font-bold text-emerald-600">
-                    Passed ✓
+              {(effectiveLessonQuiz.length > 0 || isInstructorOrAdmin) && (
+                <button
+                  onClick={() => setActiveTab("quiz")}
+                  className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-all ${
+                    activeTab === "quiz"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <HelpCircle className="h-3.5 w-3.5 text-purple-500" />
+                  <span>
+                    {effectiveLessonQuiz.length > 0
+                      ? `Video Checkpoint Quiz (${effectiveLessonQuiz.length})`
+                      : "Add Video Quiz"}
                   </span>
-                )}
-              </button>
+                  {isCompleted && effectiveLessonQuiz.length > 0 && (
+                    <span className="ml-1 rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[9px] font-bold text-emerald-600">
+                      Passed ✓
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Tab 1: Lesson Text Overview */}
