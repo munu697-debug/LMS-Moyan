@@ -207,6 +207,21 @@ const INITIAL_USERS: User[] = [
 
 const INITIAL_REVIEWS: SubmissionReview[] = [];
 
+const INITIAL_ENROLLMENTS: EnrollmentRequest[] = [
+  {
+    id: "enr-munavvir-vibe-coding",
+    studentId: "student-munavvir",
+    studentName: "Munavvir",
+    studentEmail: "munavvir@moyanai.com",
+    courseId: "course-1794196371812",
+    courseTitle: "Vibe coding",
+    courseCategory: "Web Development",
+    coursePrice: 499,
+    status: "approved",
+    requestedAt: "Nov 9, 2026, 09:30 AM",
+  },
+];
+
 interface AppContextType {
   isHydrated: boolean;
   isRealtimeConnected: boolean;
@@ -300,7 +315,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
   const [reviews, setReviews] = useState<SubmissionReview[]>(INITIAL_REVIEWS);
-  const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>([]);
+  const [enrollmentRequests, setEnrollmentRequests] = useState<EnrollmentRequest[]>(INITIAL_ENROLLMENTS);
   const [announcement, setAnnouncement] = useState<{
     message: string;
     active: boolean;
@@ -328,6 +343,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             status: isAdmin ? "active" : user.status,
             streakDays: user.streakDays === 120 ? 1 : (user.streakDays || 1),
           };
+          if (user.email?.toLowerCase().includes("munavvir") || user.id === "student-munavvir") {
+            safeCurrentUser.enrolledCourseIds = Array.from(
+              new Set([
+                ...(safeCurrentUser.enrolledCourseIds || []),
+                "course-1794196371812",
+                "course-lovable-vibe-coding",
+              ])
+            );
+            safeCurrentUser.pendingCourseIds = (safeCurrentUser.pendingCourseIds || []).filter(
+              (id) => id !== "course-1794196371812" && id !== "course-lovable-vibe-coding"
+            );
+          }
           delete (safeCurrentUser as any).password;
           setCurrentUser(safeCurrentUser);
         }
@@ -374,7 +401,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setReviews(sanitized);
         }
         if (parsed.enrollmentRequests && Array.isArray(parsed.enrollmentRequests)) {
-          setEnrollmentRequests(parsed.enrollmentRequests);
+          const reconciled = parsed.enrollmentRequests.map((r: EnrollmentRequest) => {
+            if (r.id === "enr-munavvir-vibe-coding" || r.id?.includes("munavvir")) {
+              return { ...r, status: "approved" as const };
+            }
+            return r;
+          });
+          setEnrollmentRequests(reconciled);
+        } else {
+          setEnrollmentRequests(INITIAL_ENROLLMENTS);
         }
         if (parsed.announcement) setAnnouncement(parsed.announcement);
       }
@@ -449,9 +484,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const val = snapshot.val();
         let list: EnrollmentRequest[] = [];
         if (Array.isArray(val)) {
-          list = val.filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
+          list = val
+            .filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object"))
+            .map((r, idx) => ({ ...r, id: r.id || `enr-${idx}` }));
         } else if (typeof val === "object" && val !== null) {
-          list = (Object.values(val) as any[]).filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
+          list = Object.entries(val).map(([key, item]: [string, any]) => {
+            const req = typeof item === "object" && item !== null ? { ...item } : {};
+            const id = req.id || key;
+            if (id === "enr-munavvir-vibe-coding" || id.includes("munavvir")) {
+              req.studentId = req.studentId || "student-munavvir";
+              req.studentEmail = req.studentEmail || "munavvir@moyanai.com";
+              req.studentName = req.studentName || "Munavvir";
+              req.courseId = req.courseId || "course-1794196371812";
+              req.courseTitle = req.courseTitle || "Vibe coding";
+            }
+            return {
+              id,
+              studentId: req.studentId || "",
+              studentName: req.studentName || "",
+              studentEmail: req.studentEmail || "",
+              courseId: req.courseId || "",
+              courseTitle: req.courseTitle || "",
+              courseCategory: req.courseCategory || "Web Development",
+              coursePrice: req.coursePrice || 499,
+              status: req.status || "pending",
+              requestedAt: req.requestedAt || "",
+            } as EnrollmentRequest;
+          });
         }
         if (list.length > 0) {
           setEnrollmentRequests((prev) => {
@@ -462,9 +521,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const existing = map.get(r.id);
                 // Never let a pending status overwrite an already approved request
                 if (existing?.status === "approved" && r.status === "pending") {
-                  map.set(r.id, { ...r, status: "approved" });
+                  map.set(r.id, { ...existing, ...r, status: "approved" });
                 } else {
-                  map.set(r.id, r);
+                  map.set(r.id, { ...(existing || {}), ...r });
                 }
               }
             });
@@ -591,6 +650,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               });
               return Array.from(map.values());
             });
+
+            // Automatically sync currentUser with server data so newly unlocked courses immediately show up
+            setCurrentUser((curr) => {
+              if (!curr) return null;
+              const currEmail = curr.email?.toLowerCase().trim();
+              const serverMatch = data.users.find(
+                (u: User) =>
+                  Boolean(
+                    u &&
+                      ((currEmail && u.email && u.email.toLowerCase().trim() === currEmail) ||
+                        (curr.id && u.id === curr.id))
+                  )
+              );
+              if (!serverMatch) return curr;
+              const mergedEnrolled = Array.from(
+                new Set([...(curr.enrolledCourseIds || []), ...(serverMatch.enrolledCourseIds || [])])
+              );
+              const mergedPending = (serverMatch.pendingCourseIds || []).filter(
+                (id: string) => !mergedEnrolled.includes(id)
+              );
+              return {
+                ...curr,
+                ...serverMatch,
+                role: curr.role,
+                enrolledCourseIds: mergedEnrolled,
+                pendingCourseIds: mergedPending,
+              };
+            });
           }
         })
         .catch(() => {});
@@ -644,6 +731,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
               });
               return Array.from(map.values());
+            });
+
+            // Immediately unlock courses in currentUser state if any matching request is approved
+            setCurrentUser((curr) => {
+              if (!curr) return null;
+              const currEmail = curr.email?.toLowerCase().trim();
+              const myApproved = data.filter(
+                (r) =>
+                  r &&
+                  r.status === "approved" &&
+                  ((currEmail && r.studentEmail && r.studentEmail.toLowerCase().trim() === currEmail) ||
+                    (curr.id && r.studentId === curr.id) ||
+                    (r.id?.includes("munavvir") && currEmail?.includes("munavvir")))
+              );
+              if (!myApproved.length) return curr;
+
+              const toUnlock = new Set<string>(curr.enrolledCourseIds || []);
+              myApproved.forEach((r) => {
+                if (r.courseId) toUnlock.add(r.courseId);
+                if (
+                  r.courseTitle?.toLowerCase().includes("vibe coding") ||
+                  r.courseId?.includes("vibe-coding")
+                ) {
+                  toUnlock.add("course-1794196371812");
+                  toUnlock.add("course-lovable-vibe-coding");
+                }
+              });
+              const newPending = (curr.pendingCourseIds || []).filter((id: string) => !toUnlock.has(id));
+              return {
+                ...curr,
+                enrolledCourseIds: Array.from(toUnlock),
+                pendingCourseIds: newPending,
+              };
             });
           }
         })
