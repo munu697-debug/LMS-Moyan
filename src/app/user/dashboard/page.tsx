@@ -198,15 +198,24 @@ export default function UserDashboard() {
                 key={c.id}
                 className="rounded-2xl border border-amber-500/20 bg-card p-4 flex flex-col justify-between gap-3 shadow-sm"
               >
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span className="font-bold text-primary uppercase text-[10px]">{c.category}</span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
-                      <Clock className="h-3 w-3 animate-spin" style={{ animationDuration: "4s" }} /> In Review
-                    </span>
+                <div className="flex items-start gap-3">
+                  {c.coverImage ? (
+                    <img
+                      src={c.coverImage}
+                      alt={c.title}
+                      className="h-16 w-16 rounded-xl object-cover border border-border shrink-0 shadow-sm"
+                    />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="font-bold text-primary uppercase text-[10px]">{c.category}</span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                        <Clock className="h-3 w-3 animate-spin" style={{ animationDuration: "4s" }} /> In Review
+                      </span>
+                    </div>
+                    <h4 className="mt-1 font-bold text-foreground text-sm line-clamp-1">{c.title}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{c.tagline}</p>
                   </div>
-                  <h4 className="mt-1 font-bold text-foreground text-sm line-clamp-1">{c.title}</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{c.tagline}</p>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-border/60 pt-3 text-xs">
@@ -256,15 +265,28 @@ export default function UserDashboard() {
                   className="rounded-3xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
                 >
                   <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-                          {c.category}
-                        </span>
-                        <span className="text-xs text-muted-foreground">• {c.level}</span>
+                    <div className="flex items-start sm:items-center gap-3.5">
+                      {c.coverImage ? (
+                        <img
+                          src={c.coverImage}
+                          alt={c.title}
+                          className="h-14 w-20 shrink-0 rounded-2xl object-cover border border-border shadow-xs"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                          <BookOpen className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
+                            {c.category}
+                          </span>
+                          <span className="text-xs text-muted-foreground">• {c.level}</span>
+                        </div>
+                        <h3 className="text-base font-bold text-foreground leading-snug">{c.title}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{c.tagline}</p>
                       </div>
-                      <h3 className="text-base font-bold text-foreground">{c.title}</h3>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{c.tagline}</p>
                     </div>
 
                     <Link

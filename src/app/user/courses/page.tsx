@@ -159,11 +159,32 @@ export default function UserCoursesPage() {
               className="flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
             >
               <div>
-                <div className="relative h-40 bg-gradient-primary p-4">
-                  <span className="rounded-full bg-card/90 px-2.5 py-0.5 text-[10px] font-bold text-primary backdrop-blur-md">
-                    {c.level}
-                  </span>
-                  <BookOpen className="absolute bottom-3 right-3 h-12 w-12 text-primary-foreground/30" />
+                <div className="relative h-48 overflow-hidden bg-gradient-primary">
+                  {c.coverImage ? (
+                    <img
+                      src={c.coverImage}
+                      alt={c.title}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-grid opacity-60" />
+                  )}
+                  {c.coverImage && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+                  )}
+                  <div className="relative z-10 flex h-full flex-col justify-between p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full bg-card/90 px-2.5 py-0.5 text-[10px] font-bold text-primary backdrop-blur-md">
+                        {c.level}
+                      </span>
+                      <span className="rounded-full bg-primary-foreground/20 px-2.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-md">
+                        ₹{c.price}
+                      </span>
+                    </div>
+                    {!c.coverImage && (
+                      <BookOpen className="self-end h-12 w-12 text-primary-foreground/30" />
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-5">
@@ -208,9 +229,17 @@ export default function UserCoursesPage() {
                     <PlayCircle className="h-3.5 w-3.5" /> Continue Course
                   </Link>
                 ) : (
-                  <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 py-2.5 text-xs font-bold text-amber-700 dark:text-amber-400">
-                    <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: "5s" }} />
-                    <span>Pending Admin Approval</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 py-2.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                      <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: "5s" }} />
+                      <span>Pending Approval</span>
+                    </div>
+                    <Link
+                      href={`/user/learn/${c.id}`}
+                      className="rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-bold text-foreground hover:bg-muted"
+                    >
+                      Preview Syllabus
+                    </Link>
                   </div>
                 )}
               </div>

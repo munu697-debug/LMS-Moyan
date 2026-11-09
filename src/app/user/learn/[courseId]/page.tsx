@@ -20,8 +20,10 @@ import {
   Trophy,
   Share2,
   Clock,
+  Lock,
+  Eye,
 } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, isUserAdmin } from "@/lib/store";
 import { toast } from "sonner";
 import ModernVideoPlayer from "@/components/ModernVideoPlayer";
 
@@ -62,6 +64,13 @@ export default function LearnCoursePage({ params }: PageProps) {
       (r) => r.studentId === currentUser?.id && r.courseId === course.id && r.status === "pending"
     );
 
+  const canAccessVideos =
+    isEnrolled ||
+    currentUser?.role === "admin" ||
+    (currentUser && isUserAdmin(currentUser.email)) ||
+    currentUser?.id === course.instructor.id ||
+    currentUser?.name === course.instructor.name;
+
   // Active lesson state
   const firstLesson = course.modules[0]?.lessons[0];
   const [activeLessonId, setActiveLessonId] = useState<string>(
@@ -87,6 +96,19 @@ export default function LearnCoursePage({ params }: PageProps) {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+
+  const handleEnrollClick = () => {
+    if (!currentUser) {
+      toast.info("Please sign in or create an account to enroll.");
+      return;
+    }
+    const res = requestEnrollment(course.id);
+    if (res.success) {
+      toast.success(`Enrollment request submitted for "${course.title}". Awaiting admin approval.`);
+    } else {
+      toast.warning(res.message || "Could not submit enrollment request.");
+    }
+  };
 
   const handleSendMessage = (textToSend?: string) => {
     const text = textToSend || inputMessage;
@@ -123,8 +145,12 @@ export default function LearnCoursePage({ params }: PageProps) {
   };
 
   const handleToggleCompletion = () => {
-    if (!isEnrolled) {
-      toast.warning("Classroom is in preview mode. Lesson progress tracking unlocks once approved by administrator.");
+    if (!canAccessVideos) {
+      if (isPending) {
+        toast.warning("Classroom is in syllabus preview mode. Progress tracking unlocks once your enrollment is approved.");
+      } else {
+        toast.info("Enroll in this course to track lesson completion and earn certificates.");
+      }
       return;
     }
     toggleLessonCompletion(course.id, activeLessonId);
@@ -146,23 +172,21 @@ export default function LearnCoursePage({ params }: PageProps) {
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
         </Link>
         <div className="flex items-center gap-2">
+          {!canAccessVideos ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-bold text-primary">
+              <Eye className="h-3.5 w-3.5" /> Syllabus Preview Mode
+            </span>
+          ) : null}
           {isPending ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-400">
               <Clock className="h-3.5 w-3.5 animate-spin" style={{ animationDuration: "5s" }} /> Pending Admin Approval
             </span>
-          ) : !isEnrolled ? (
+          ) : !isEnrolled && !canAccessVideos ? (
             <button
-              onClick={() => {
-                const res = requestEnrollment(course.id);
-                if (res.success) {
-                  toast.info(`Enrollment request submitted for "${course.title}". Awaiting admin approval.`);
-                } else {
-                  toast.warning(res.message || "Could not submit enrollment request.");
-                }
-              }}
+              onClick={handleEnrollClick}
               className="rounded-full bg-primary px-3.5 py-1 text-xs font-bold text-primary-foreground shadow-sm hover:scale-105 transition-transform"
             >
-              Request Enrollment
+              Enroll in Course
             </button>
           ) : null}
           <Link
@@ -178,26 +202,86 @@ export default function LearnCoursePage({ params }: PageProps) {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column: Video & Lesson Content (2 cols) */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Modern LMS Video Player */}
-          {activeLesson?.videoUrl ? (
-            <ModernVideoPlayer
-              key={activeLesson.id}
-              videoUrl={activeLesson.videoUrl}
-              title={activeLesson.title}
-              courseTitle={course.title}
-              duration={activeLesson.duration}
-              onEnded={() => {
-                if (!isCompleted) handleToggleCompletion();
-              }}
-            />
+          {/* LMS Video Player or Syllabus Preview Screen */}
+          {canAccessVideos ? (
+            activeLesson?.videoUrl ? (
+              <ModernVideoPlayer
+                key={activeLesson.id}
+                videoUrl={activeLesson.videoUrl}
+                title={activeLesson.title}
+                courseTitle={course.title}
+                duration={activeLesson.duration}
+                onEnded={() => {
+                  if (!isCompleted) handleToggleCompletion();
+                }}
+              />
+            ) : (
+              <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-border bg-black shadow-lg">
+                <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-card to-secondary p-8 text-center">
+                  <PlayCircle className="h-16 w-16 text-primary" />
+                  <p className="mt-3 text-sm font-bold text-foreground">
+                    Interactive Video Module Ready
+                  </p>
+                  <p className="text-xs text-muted-foreground">Click play to begin lesson stream</p>
+                </div>
+              </div>
+            )
           ) : (
-            <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-border bg-black shadow-lg">
-              <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-card to-secondary p-8 text-center">
-                <PlayCircle className="h-16 w-16 text-primary" />
-                <p className="mt-3 text-sm font-bold text-foreground">
-                  Interactive Video Module Ready
+            <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-border bg-zinc-950 shadow-2xl">
+              {/* Course cover image in background */}
+              {course.coverImage ? (
+                <img
+                  src={course.coverImage}
+                  alt={course.title}
+                  className="absolute inset-0 h-full w-full object-cover opacity-25 filter blur-xs scale-105 transition-all duration-700"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black opacity-80" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/60" />
+
+              <div className="relative z-10 flex h-full w-full flex-col items-center justify-center p-6 text-center">
+                <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white shadow-xl backdrop-blur-md">
+                  <Lock className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
+                </div>
+
+                <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/20 px-3 py-1 text-[11px] font-bold text-primary backdrop-blur-md">
+                  <Eye className="h-3 w-3" /> Syllabus Preview Mode
+                </div>
+
+                <h3 className="mt-2 text-lg font-black text-white sm:text-2xl tracking-tight">
+                  Video Lessons Locked
+                </h3>
+                <p className="mt-1 max-w-md text-xs text-zinc-300 sm:text-sm leading-relaxed px-4">
+                  You are previewing the curriculum for <strong className="text-white">"{course.title}"</strong>. Full video lessons and interactive exercises unlock once enrolled.
                 </p>
-                <p className="text-xs text-muted-foreground">Click play to begin lesson stream</p>
+
+                {isPending ? (
+                  <div className="mt-4 flex items-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/15 px-5 py-2.5 text-xs font-bold text-amber-300 backdrop-blur-md shadow-sm">
+                    <Clock className="h-4 w-4 animate-spin text-amber-400" style={{ animationDuration: "5s" }} />
+                    <span>Enrollment Pending Admin Approval • Videos unlock once approved</span>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      onClick={handleEnrollClick}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-primary px-6 py-2.5 text-xs font-bold text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95"
+                    >
+                      <Sparkles className="h-4 w-4" /> Enroll in Course (₹{course.price})
+                    </button>
+                    <Link
+                      href="/courses"
+                      className="rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/20 backdrop-blur-md transition-all"
+                    >
+                      Browse Other Courses
+                    </Link>
+                  </div>
+                )}
+
+                <div className="mt-4 flex items-center gap-2 text-[11px] text-zinc-400">
+                  <BookOpen className="h-3.5 w-3.5 text-primary" />
+                  <span>Explore the syllabus & modules below to preview lesson notes</span>
+                </div>
               </div>
             </div>
           )}
@@ -206,9 +290,16 @@ export default function LearnCoursePage({ params }: PageProps) {
           <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div>
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-                  {course.title}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
+                    {course.title}
+                  </span>
+                  {!canAccessVideos && (
+                    <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      Syllabus Preview
+                    </span>
+                  )}
+                </div>
                 <h1 className="mt-1 text-xl font-extrabold text-foreground sm:text-2xl">
                   {activeLesson?.title}
                 </h1>
@@ -220,13 +311,24 @@ export default function LearnCoursePage({ params }: PageProps) {
               <button
                 onClick={handleToggleCompletion}
                 className={`inline-flex shrink-0 items-center gap-2 rounded-2xl px-5 py-3 text-xs font-bold transition-all ${
-                  isCompleted
+                  !canAccessVideos
+                    ? "border border-border bg-muted/60 text-muted-foreground cursor-pointer hover:bg-muted"
+                    : isCompleted
                     ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
                     : "bg-primary text-primary-foreground shadow-elegant hover:scale-105"
                 }`}
               >
-                <CheckCircle className="h-4 w-4" />
-                {isCompleted ? "Completed ✓" : "Mark as Complete"}
+                {!canAccessVideos ? (
+                  <>
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <span>Locked (Enroll to Track)</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    {isCompleted ? "Completed ✓" : "Mark as Complete"}
+                  </>
+                )}
               </button>
             </div>
 
@@ -268,7 +370,7 @@ export default function LearnCoursePage({ params }: PageProps) {
                   <div className="space-y-1.5">
                     {mod.lessons.map((les) => {
                       const isCurrent = les.id === activeLessonId;
-                      const isDone = currentUser?.completedLessonIds.includes(les.id) ?? false;
+                      const isDone = currentUser?.completedLessonIds?.includes(les.id) ?? false;
                       return (
                         <button
                           key={les.id}
@@ -280,11 +382,19 @@ export default function LearnCoursePage({ params }: PageProps) {
                           }`}
                         >
                           <div className="flex items-center gap-2 truncate pr-2">
-                            <span
-                              className={`h-2 w-2 rounded-full ${
-                                isDone ? "bg-emerald-500" : isCurrent ? "bg-primary-foreground" : "bg-muted-foreground/40"
-                              }`}
-                            />
+                            {canAccessVideos ? (
+                              <span
+                                className={`h-2 w-2 rounded-full ${
+                                  isDone ? "bg-emerald-500" : isCurrent ? "bg-primary-foreground" : "bg-muted-foreground/40"
+                                }`}
+                              />
+                            ) : (
+                              <Lock
+                                className={`h-3 w-3 shrink-0 ${
+                                  isCurrent ? "text-primary-foreground" : "text-muted-foreground"
+                                }`}
+                              />
+                            )}
                             <span className="truncate">{les.title}</span>
                           </div>
                           <span className="shrink-0 text-[10px] opacity-80">{les.duration}</span>

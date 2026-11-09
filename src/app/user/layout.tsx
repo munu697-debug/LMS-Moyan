@@ -22,11 +22,13 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const { currentUser, isHydrated } = useAppStore();
 
+  const isLearnPage = pathname.startsWith("/user/learn");
+
   useEffect(() => {
-    if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email))) {
+    if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email)) && !isLearnPage) {
       router.replace("/admin/dashboard");
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, isLearnPage]);
 
   if (!isHydrated) {
     return (
@@ -37,7 +39,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email))) {
+  if (currentUser && (currentUser.role === "admin" || isUserAdmin(currentUser.email)) && !isLearnPage) {
     return (
       <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center p-6 text-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -47,6 +49,16 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   }
 
   if (!currentUser) {
+    if (isLearnPage) {
+      return (
+        <div className="min-h-[calc(100vh-65px)] bg-muted/20">
+          <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+            {children}
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center p-6 text-center">
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-primary/10 text-primary">
