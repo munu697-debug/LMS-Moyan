@@ -23,8 +23,9 @@ import {
   Check,
   Image as ImageIcon,
   Edit3,
+  HelpCircle,
 } from "lucide-react";
-import { useAppStore, Course } from "@/lib/store";
+import { useAppStore, Course, QuizQuestion } from "@/lib/store";
 import { toast } from "sonner";
 import { ImageUpload } from "@/components/ImageUpload";
 
@@ -77,10 +78,28 @@ export default function AdminCoursesPage() {
         duration?: string;
         summary?: string;
         content?: string;
-        quiz?: any[];
+        quiz?: QuizQuestion[];
       }[];
     }[]
   >([]);
+
+  // Lesson Quiz Editor Modal State
+  const [lessonQuizModal, setLessonQuizModal] = useState<{
+    target: "edit" | "create";
+    modIdx: number;
+    lessonIdx: number;
+    lessonTitle: string;
+    questions: QuizQuestion[];
+  } | null>(null);
+  const [quizQuestionInput, setQuizQuestionInput] = useState("");
+  const [quizOptionsInput, setQuizOptionsInput] = useState<[string, string, string, string]>([
+    "",
+    "",
+    "",
+    "",
+  ]);
+  const [quizCorrectIndex, setQuizCorrectIndex] = useState<number>(0);
+  const [quizExplanationInput, setQuizExplanationInput] = useState("");
 
   // Sync tab from URL if ?tab=enrollments
   React.useEffect(() => {
@@ -113,7 +132,7 @@ export default function AdminCoursesPage() {
     {
       id: string;
       title: string;
-      lessons: { id: string; title: string; videoUrl: string }[];
+      lessons: { id: string; title: string; videoUrl: string; quiz?: QuizQuestion[] }[];
     }[]
   >([
     {
@@ -486,6 +505,96 @@ export default function AdminCoursesPage() {
     toast.success(`"${targetTitle}" has been permanently deleted from catalog.`);
   };
 
+  // Open Quiz Modal for a Specific Lesson
+  const handleOpenLessonQuiz = (target: "edit" | "create", modIdx: number, lessonIdx: number) => {
+    const list = target === "edit" ? editModules : courseModules;
+    const lesson = list[modIdx]?.lessons[lessonIdx] as any;
+    if (!lesson) return;
+
+    setLessonQuizModal({
+      target,
+      modIdx,
+      lessonIdx,
+      lessonTitle: lesson.title || `Lesson ${lessonIdx + 1}`,
+      questions: lesson.quiz ? [...lesson.quiz] : [],
+    });
+    setQuizQuestionInput("");
+    setQuizOptionsInput(["", "", "", ""]);
+    setQuizCorrectIndex(0);
+    setQuizExplanationInput("");
+  };
+
+  const handleAddQuestionToLessonQuiz = () => {
+    if (!lessonQuizModal) return;
+    if (!quizQuestionInput.trim()) {
+      toast.error("Please enter a question prompt.");
+      return;
+    }
+    if (quizOptionsInput.some((opt) => !opt.trim())) {
+      toast.error("Please fill out all 4 multiple choice options.");
+      return;
+    }
+
+    const newQuestion: QuizQuestion = {
+      id: `q-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      question: quizQuestionInput.trim(),
+      options: [...quizOptionsInput] as [string, string, string, string],
+      correctIndex: quizCorrectIndex,
+      explanation: quizExplanationInput.trim() || "Concept checkpoint review.",
+    };
+
+    setLessonQuizModal((prev) =>
+      prev ? { ...prev, questions: [...prev.questions, newQuestion] } : null
+    );
+    setQuizQuestionInput("");
+    setQuizOptionsInput(["", "", "", ""]);
+    setQuizCorrectIndex(0);
+    setQuizExplanationInput("");
+    toast.success("Question added to quiz list.");
+  };
+
+  const handleDeleteQuestionFromLessonQuiz = (qId: string) => {
+    setLessonQuizModal((prev) =>
+      prev ? { ...prev, questions: prev.questions.filter((q) => q.id !== qId) } : null
+    );
+  };
+
+  const handleSaveLessonQuiz = () => {
+    if (!lessonQuizModal) return;
+    const { target, modIdx, lessonIdx, questions } = lessonQuizModal;
+
+    if (target === "edit") {
+      setEditModules((prev) =>
+        prev.map((m, mI) =>
+          mI === modIdx
+            ? {
+                ...m,
+                lessons: m.lessons.map((l, lI) =>
+                  lI === lessonIdx ? { ...l, quiz: questions } : l
+                ),
+              }
+            : m
+        )
+      );
+    } else {
+      setCourseModules((prev) =>
+        prev.map((m, mI) =>
+          mI === modIdx
+            ? {
+                ...m,
+                lessons: m.lessons.map((l, lI) =>
+                  lI === lessonIdx ? { ...l, quiz: questions } : l
+                ),
+              }
+            : m
+        )
+      );
+    }
+
+    toast.success(`Saved ${questions.length} checkpoint question(s) to this video lesson! 🎉`);
+    setLessonQuizModal(null);
+  };
+
   const handleCreateCourseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
@@ -809,6 +918,15 @@ export default function AdminCoursesPage() {
                   >
                     <Edit3 className="h-3.5 w-3.5 text-blue-600" /> Edit
                   </button>
+
+                  {/* Quizzes & Video Player Link */}
+                  <Link
+                    href={`/user/learn/${course.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/40 bg-purple-500/10 px-3.5 py-2 text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 transition-all cursor-pointer shadow-2xs hover:scale-102"
+                    title="Manage video quizzes & preview player"
+                  >
+                    <HelpCircle className="h-3.5 w-3.5 text-purple-600" /> Video Quizzes
+                  </Link>
 
                   {/* Toggle publish / unpublish */}
                   <button
@@ -1231,6 +1349,32 @@ export default function AdminCoursesPage() {
                               </button>
                             )}
                           </div>
+
+                          {/* Lesson Checkpoint Quiz Trigger */}
+                          <div className="sm:col-span-12 flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-border/40">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenLessonQuiz("create", modIdx, lessonIdx)}
+                              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                                (lesson as any).quiz && (lesson as any).quiz.length > 0
+                                  ? "border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 shadow-2xs"
+                                  : "border-border bg-muted/60 text-muted-foreground hover:border-purple-500/40 hover:text-purple-600 hover:bg-purple-500/10"
+                              }`}
+                            >
+                              <HelpCircle className="h-3.5 w-3.5 text-purple-600" />
+                              <span>
+                                {(lesson as any).quiz && (lesson as any).quiz.length > 0
+                                  ? `Checkpoint Quiz (${(lesson as any).quiz.length} Questions) 📝`
+                                  : "+ Add Video Checkpoint Quiz"}
+                              </span>
+                            </button>
+
+                            <span className="text-[10px] text-muted-foreground">
+                              {(lesson as any).quiz && (lesson as any).quiz.length > 0
+                                ? "Checkpoint quiz attached • Required for sequential unlocking"
+                                : "No quiz attached • Lesson unlocks on video completion"}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1602,6 +1746,32 @@ export default function AdminCoursesPage() {
                               </button>
                             )}
                           </div>
+
+                          {/* Lesson Checkpoint Quiz Trigger */}
+                          <div className="sm:col-span-12 flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-border/40">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenLessonQuiz("edit", modIdx, lessonIdx)}
+                              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                                lesson.quiz && lesson.quiz.length > 0
+                                  ? "border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 shadow-2xs"
+                                  : "border-border bg-muted/60 text-muted-foreground hover:border-purple-500/40 hover:text-purple-600 hover:bg-purple-500/10"
+                              }`}
+                            >
+                              <HelpCircle className="h-3.5 w-3.5 text-purple-600" />
+                              <span>
+                                {lesson.quiz && lesson.quiz.length > 0
+                                  ? `Checkpoint Quiz (${lesson.quiz.length} Questions) 📝`
+                                  : "+ Add Video Checkpoint Quiz"}
+                              </span>
+                            </button>
+
+                            <span className="text-[10px] text-muted-foreground">
+                              {lesson.quiz && lesson.quiz.length > 0
+                                ? "Checkpoint quiz attached • Required for sequential unlocking"
+                                : "No quiz attached • Lesson unlocks on video completion"}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1839,6 +2009,171 @@ export default function AdminCoursesPage() {
                 className="inline-flex items-center gap-1.5 rounded-2xl bg-rose-600 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-rose-700 transition-transform active:scale-95 cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Video Lesson Checkpoint Quiz Editor */}
+      {lessonQuizModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-fade-in">
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5 text-purple-600" />
+                  Video Checkpoint Quiz Builder
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Lesson: <span className="font-semibold text-foreground">"{lessonQuizModal.lessonTitle}"</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLessonQuizModal(null)}
+                className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Existing Questions */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Attached Questions ({lessonQuizModal.questions.length})
+              </h4>
+
+              {lessonQuizModal.questions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                  No questions attached to this video yet. Add questions below to require concept testing before unlocking the next video.
+                </div>
+              ) : (
+                lessonQuizModal.questions.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className="flex items-start justify-between gap-3 rounded-2xl border border-border/80 bg-muted/30 p-3.5"
+                  >
+                    <div className="space-y-1.5 flex-1 text-xs">
+                      <p className="font-bold text-foreground">
+                        {idx + 1}. {q.question}
+                      </p>
+                      <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                        {q.options.map((opt, oIdx) => (
+                          <span
+                            key={oIdx}
+                            className={`rounded-lg px-2 py-1 ${
+                              oIdx === q.correctIndex
+                                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/30"
+                                : "bg-card text-muted-foreground"
+                            }`}
+                          >
+                            {String.fromCharCode(65 + oIdx)}. {opt} {oIdx === q.correctIndex && "✓"}
+                          </span>
+                        ))}
+                      </div>
+                      {q.explanation && (
+                        <p className="text-[10px] text-muted-foreground italic">
+                          Explanation: {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteQuestionFromLessonQuiz(q.id)}
+                      className="rounded-xl p-1.5 text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                      title="Delete question"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Form to Add a New Question */}
+            <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-3.5">
+              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Plus className="h-4 w-4 text-purple-600" /> Add New Question
+              </h4>
+
+              <div>
+                <label className="text-[11px] font-bold text-muted-foreground">Question Prompt *</label>
+                <input
+                  type="text"
+                  value={quizQuestionInput}
+                  onChange={(e) => setQuizQuestionInput(e.target.value)}
+                  placeholder="e.g. What is the key advantage of Vibe Coding in Lovable?"
+                  className="mt-1 w-full rounded-xl border border-input bg-card px-3 py-2 text-xs outline-none focus:border-purple-600"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-muted-foreground">
+                  4 Options (Select radio for correct answer) *
+                </label>
+                {quizOptionsInput.map((opt, oIdx) => (
+                  <div key={oIdx} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="quizCorrectChoice"
+                      checked={quizCorrectIndex === oIdx}
+                      onChange={() => setQuizCorrectIndex(oIdx)}
+                      className="h-4 w-4 accent-purple-600 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold w-4">{String.fromCharCode(65 + oIdx)}</span>
+                    <input
+                      type="text"
+                      value={opt}
+                      onChange={(e) => {
+                        const next = [...quizOptionsInput] as [string, string, string, string];
+                        next[oIdx] = e.target.value;
+                        setQuizOptionsInput(next);
+                      }}
+                      placeholder={`Option ${String.fromCharCode(65 + oIdx)}...`}
+                      className="flex-1 rounded-xl border border-input bg-card px-3 py-1.5 text-xs outline-none focus:border-purple-600"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-muted-foreground">
+                  Explanation Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={quizExplanationInput}
+                  onChange={(e) => setQuizExplanationInput(e.target.value)}
+                  placeholder="Shown to students after answering to explain the correct answer..."
+                  className="mt-1 w-full rounded-xl border border-input bg-card px-3 py-2 text-xs outline-none focus:border-purple-600"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddQuestionToLessonQuiz}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600/10 border border-purple-500/30 px-3.5 py-2 text-xs font-bold text-purple-600 hover:bg-purple-600/20 transition-all cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Question to List
+              </button>
+            </div>
+
+            {/* Modal Bottom Buttons */}
+            <div className="flex items-center justify-end gap-3 border-t border-border/60 pt-4">
+              <button
+                type="button"
+                onClick={() => setLessonQuizModal(null)}
+                className="rounded-2xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveLessonQuiz}
+                className="rounded-2xl bg-purple-600 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-purple-700 transition-all cursor-pointer hover:scale-105 active:scale-95"
+              >
+                Save Quiz to This Lesson
               </button>
             </div>
           </div>
