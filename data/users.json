@@ -1,0 +1,45 @@
+[
+  {
+    "id": "admin-master",
+    "name": "Super Admin",
+    "email": "moyanhub@gmail.com",
+    "role": "admin",
+    "status": "active",
+    "avatar": "",
+    "enrolledCourseIds": [],
+    "completedLessonIds": [],
+    "streakDays": 1,
+    "quizScores": {},
+    "certificates": [],
+    "joinedDate": "Nov 2026"
+  },
+  {
+    "id": "student-munavvir",
+    "name": "Munavvir",
+    "email": "munavvir@moyanai.com",
+    "role": "student",
+    "status": "active",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+    "enrolledCourseIds": [],
+    "completedLessonIds": [],
+    "streakDays": 1,
+    "quizScores": {},
+    "certificates": [],
+    "joinedDate": "Nov 2026"
+  },
+  {
+    "id": "tutor-kutti",
+    "name": "Kutti Hacker",
+    "email": "kuttihacker@moyanai.com",
+    "role": "tutor",
+    "status": "active",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    "enrolledCourseIds": [],
+    "completedLessonIds": [],
+    "streakDays": 1,
+    "quizScores": {},
+    "certificates": [],
+    "earnings": 0,
+    "joinedDate": "Nov 2026"
+  }
+]

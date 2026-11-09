@@ -158,7 +158,51 @@ export const isUserAdmin = (email?: string | null): boolean => {
   );
 };
 
-const INITIAL_USERS: User[] = [];
+const INITIAL_USERS: User[] = [
+  {
+    id: "admin-master",
+    name: "Super Admin",
+    email: "moyanhub@gmail.com",
+    role: "admin",
+    status: "active",
+    avatar: "",
+    enrolledCourseIds: [],
+    completedLessonIds: [],
+    streakDays: 1,
+    quizScores: {},
+    certificates: [],
+    joinedDate: "Nov 2026",
+  },
+  {
+    id: "student-munavvir",
+    name: "Munavvir",
+    email: "munavvir@moyanai.com",
+    role: "student",
+    status: "active",
+    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+    enrolledCourseIds: [],
+    completedLessonIds: [],
+    streakDays: 1,
+    quizScores: {},
+    certificates: [],
+    joinedDate: "Nov 2026",
+  },
+  {
+    id: "tutor-kutti",
+    name: "Kutti Hacker",
+    email: "kuttihacker@moyanai.com",
+    role: "tutor",
+    status: "active",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    enrolledCourseIds: [],
+    completedLessonIds: [],
+    streakDays: 1,
+    quizScores: {},
+    certificates: [],
+    earnings: 0,
+    joinedDate: "Nov 2026",
+  },
+];
 
 const INITIAL_REVIEWS: SubmissionReview[] = [];
 
@@ -287,16 +331,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setCurrentUser(safeCurrentUser);
         }
         if (parsed.users && Array.isArray(parsed.users)) {
-          const updatedUsers = parsed.users.map((u: User) => {
+          const userMap = new Map<string, User>();
+          INITIAL_USERS.forEach((u) => userMap.set(u.email.toLowerCase().trim(), u));
+          parsed.users.forEach((u: User) => {
+            if (!u || !u.email) return;
             const isAdmin = isUserAdmin(u.email);
             const { password, ...safeUser } = u;
-            return {
+            const key = u.email.toLowerCase().trim();
+            userMap.set(key, {
               ...safeUser,
               role: isAdmin ? ("admin" as UserRole) : safeUser.role,
               status: isAdmin ? "active" : safeUser.status,
-            } as User;
+            } as User);
           });
-          setUsers(updatedUsers);
+          setUsers(Array.from(userMap.values()));
         }
         if (parsed.courses && Array.isArray(parsed.courses)) {
           const deleted = getDeletedCourseIds();
@@ -498,6 +546,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", syncAnnouncement);
     };
   }, []);
+
+  // Live Server Users Synchronization (syncs across all browsers, students, tutors, and admin)
+  useEffect(() => {
+    let isMounted = true;
+    const syncUsers = () => {
+      fetch("/api/users", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (isMounted && data && Array.isArray(data.users) && data.users.length > 0) {
+            setUsers((prev) => {
+              const map = new Map<string, User>();
+              data.users.forEach((u: User) => {
+                if (u && u.email) map.set(u.email.toLowerCase().trim(), u);
+              });
+              // Keep any local user not yet synced and report to server
+              prev.forEach((u) => {
+                if (!u || !u.email) return;
+                const key = u.email.toLowerCase().trim();
+                if (!map.has(key)) {
+                  map.set(key, u);
+                  fetch("/api/users", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(u),
+                  }).catch(() => {});
+                }
+              });
+              return Array.from(map.values());
+            });
+          }
+        })
+        .catch(() => {});
+    };
+
+    syncUsers();
+    const interval = setInterval(syncUsers, 5000);
+    window.addEventListener("focus", syncUsers);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", syncUsers);
+    };
+  }, []);
+
+  // When currentUser logs in or is restored, sync to server
+  useEffect(() => {
+    if (currentUser && currentUser.email) {
+      fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentUser),
+      }).catch(() => {});
+    }
+  }, [currentUser?.email, currentUser?.role, currentUser?.status]);
 
   // Sync Firebase auth state
   useEffect(() => {
@@ -787,6 +890,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     setUsers((prev) => [newUser, ...prev]);
+
+    // Persist to centralized server API
+    fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newUser),
+    }).catch(() => {});
 
     if (isTutor) {
       // Tutors require administrator approval before logging in
@@ -1162,16 +1272,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUsers((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
     );
+    fetch("/api/users", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: userId, role: newRole }),
+    }).catch(() => {});
   };
 
   const toggleUserStatus = (userId: string) => {
+    const targetUser = users.find((u) => u.id === userId);
+    const nextStatus = targetUser?.status === "active" ? "suspended" : "active";
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id !== userId) return u;
-        const nextStatus = u.status === "active" ? "suspended" : "active";
         return { ...u, status: nextStatus };
       })
     );
+    fetch("/api/users", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: userId, status: nextStatus }),
+    }).catch(() => {});
   };
 
   const approveUser = (userId: string) => {
@@ -1181,6 +1302,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentUser?.id === userId) {
       setCurrentUser((prev) => (prev ? { ...prev, status: "active" } : null));
     }
+    fetch("/api/users", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: userId, status: "active" }),
+    }).catch(() => {});
   };
 
   const rejectUser = (userId: string) => {
@@ -1190,6 +1316,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentUser?.id === userId) {
       setCurrentUser((prev) => (prev ? { ...prev, status: "suspended" } : null));
     }
+    fetch("/api/users", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: userId, status: "suspended" }),
+    }).catch(() => {});
   };
 
   const addUser = (userData: {
@@ -1230,6 +1361,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     setUsers((prev) => [newUser, ...prev]);
+
+    fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newUser),
+    }).catch(() => {});
+
     return { success: true };
   };
 
@@ -1238,6 +1376,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: "You cannot delete your own active administrator account." };
     }
     setUsers((prev) => prev.filter((u) => u.id !== userId));
+
+    fetch(`/api/users?id=${userId}`, {
+      method: "DELETE",
+    }).catch(() => {});
+
     return { success: true };
   };
 
@@ -1253,6 +1396,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentUser?.id === userId) {
       setCurrentUser((prev) => (prev ? { ...prev, password: newPassword } : null));
     }
+
+    fetch("/api/users", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: userId, password: newPassword }),
+    }).catch(() => {});
 
     return { success: true };
   };
