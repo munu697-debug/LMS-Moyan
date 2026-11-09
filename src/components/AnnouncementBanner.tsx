@@ -11,9 +11,9 @@ export function AnnouncementBanner() {
   // Reset dismissal whenever announcement message or active status changes
   useEffect(() => {
     setDismissed(false);
-  }, [announcement.message, announcement.active, announcement.type]);
+  }, [announcement?.message, announcement?.active, announcement?.type]);
 
-  if (!announcement.active || dismissed || !announcement.message) return null;
+  if (!announcement || !announcement.active || dismissed || !announcement.message) return null;
 
   const styleConfig = {
     info: {
@@ -34,22 +34,24 @@ export function AnnouncementBanner() {
       Icon: CheckCircle2,
       closeBtn: "text-emerald-800/70 hover:bg-emerald-500/10 hover:text-emerald-950 dark:text-emerald-300",
     },
-  }[announcement.type || "info"];
+  };
 
-  const BannerIcon = styleConfig.Icon;
+  const currentType = (announcement.type && announcement.type in styleConfig) ? announcement.type : "info";
+  const selectedConfig = styleConfig[currentType as keyof typeof styleConfig] || styleConfig.info;
+  const BannerIcon = selectedConfig.Icon;
 
   return (
-    <div className={`relative border-b px-4 py-2 text-xs font-semibold transition-all ${styleConfig.bar}`}>
+    <div className={`relative border-b px-4 py-2 text-xs font-semibold transition-all ${selectedConfig.bar}`}>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 overflow-hidden truncate">
-          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${styleConfig.iconBg}`}>
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${selectedConfig.iconBg}`}>
             <BannerIcon className="h-3 w-3" />
           </span>
           <span className="truncate">{announcement.message}</span>
         </div>
         <button
           onClick={() => setDismissed(true)}
-          className={`rounded-full p-1 transition-colors ${styleConfig.closeBtn}`}
+          className={`rounded-full p-1 transition-colors ${selectedConfig.closeBtn}`}
           aria-label="Dismiss banner"
         >
           <X className="h-3.5 w-3.5" />

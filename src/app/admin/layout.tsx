@@ -80,8 +80,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const pendingCoursesCount = courses.filter((c) => c.status === "pending_approval").length;
-  const pendingTutorsCount = users.filter((u) => u.role === "tutor" && u.status === "pending_approval").length;
+  const pendingCoursesCount = (courses || []).filter((c) => Boolean(c && c.status === "pending_approval")).length;
+  const pendingTutorsCount = (users || []).filter((u) => Boolean(u && u.role === "tutor" && u.status === "pending_approval")).length;
 
   const navItems = [
     { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },

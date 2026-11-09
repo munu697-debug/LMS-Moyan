@@ -37,10 +37,10 @@ export function Navbar() {
   const isAdmin = currentUser?.role === "admin" || (currentUser && isUserAdmin(currentUser.email));
   const isTutor = currentUser?.role === "tutor";
 
-  const pendingCoursesCount = courses.filter((c) => c.status === "pending_approval").length;
-  const pendingTutorsCount = users.filter((u) => u.role === "tutor" && u.status === "pending_approval").length;
-  const pendingReviewsCount = reviews.filter((r) => r.status === "pending").length;
-  const myCoursesCount = currentUser ? courses.filter((c) => c.instructor.id === currentUser.id || c.instructor.name === currentUser.name).length : 0;
+  const pendingCoursesCount = (courses || []).filter((c) => Boolean(c && c.status === "pending_approval")).length;
+  const pendingTutorsCount = (users || []).filter((u) => Boolean(u && u.role === "tutor" && u.status === "pending_approval")).length;
+  const pendingReviewsCount = (reviews || []).filter((r) => Boolean(r && r.status === "pending")).length;
+  const myCoursesCount = currentUser ? (courses || []).filter((c) => Boolean(c && c.instructor && (c.instructor.id === currentUser.id || c.instructor.name === currentUser.name))).length : 0;
   const enrolledCount = currentUser?.enrolledCourseIds?.length || 0;
   const certCount = currentUser?.certificates?.length || 0;
 

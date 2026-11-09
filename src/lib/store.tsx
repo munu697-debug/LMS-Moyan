@@ -425,12 +425,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const val = snapshot.val();
           let list: Course[] = [];
           if (Array.isArray(val)) {
-            list = val.filter(Boolean);
+            list = val.filter((c): c is Course => Boolean(c && typeof c === "object" && c.id));
           } else if (typeof val === "object" && val !== null) {
-            list = Object.values(val);
+            list = (Object.values(val) as any[]).filter((c): c is Course => Boolean(c && typeof c === "object" && c.id));
           }
           const deleted = getDeletedCourseIds();
-          const activeList = list.filter((c) => !deleted.includes(c.id));
+          const activeList = list.filter((c) => Boolean(c && c.id && !deleted.includes(c.id)));
           setCourses(activeList);
           setIsRealtimeConnected(true);
         } else {
@@ -451,9 +451,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const val = snapshot.val();
           let list: EnrollmentRequest[] = [];
           if (Array.isArray(val)) {
-            list = val.filter(Boolean);
+            list = val.filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
           } else if (typeof val === "object" && val !== null) {
-            list = Object.values(val);
+            list = (Object.values(val) as any[]).filter((r): r is EnrollmentRequest => Boolean(r && typeof r === "object" && r.id));
           }
           if (list.length > 0) {
             setEnrollmentRequests(list);

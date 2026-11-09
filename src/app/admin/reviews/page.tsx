@@ -47,16 +47,18 @@ export default function AdminReviewsPage() {
   const [replyReview, setReplyReview] = useState<UserReviewItem | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  const filtered = reviewsList.filter((rev) => {
+  const filtered = (reviewsList || []).filter((rev) => {
+    if (!rev) return false;
+    const sTerm = (searchTerm || "").toLowerCase().trim();
     const matchesSearch =
-      rev.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rev.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rev.courseTitle.toLowerCase().includes(searchTerm.toLowerCase());
+      (rev.studentName || "").toLowerCase().includes(sTerm) ||
+      (rev.comment || "").toLowerCase().includes(sTerm) ||
+      (rev.courseTitle || "").toLowerCase().includes(sTerm);
     const matchesRating =
-      ratingFilter === "all" || rev.rating === Number(ratingFilter);
+      ratingFilter === "all" || Number(rev.rating) === Number(ratingFilter);
     const matchesCourse =
       courseFilter === "all" || rev.courseTitle === courseFilter;
-    return matchesSearch && matchesRating && matchesCourse;
+    return Boolean(matchesSearch && matchesRating && matchesCourse);
   });
 
   const handleToggleFeature = (id: string, current: boolean) => {
@@ -198,9 +200,9 @@ export default function AdminReviewsPage() {
             className="rounded-2xl border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground outline-none"
           >
             <option value="all">All Courses</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.title}>
-                {c.title}
+            {(courses || []).filter(Boolean).map((c) => (
+              <option key={c?.id || c?.title} value={c?.title || ""}>
+                {c?.title || "Course"}
               </option>
             ))}
           </select>
@@ -221,11 +223,17 @@ export default function AdminReviewsPage() {
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               {/* Student Info */}
               <div className="flex items-center gap-3">
-                <img
-                  src={rev.studentAvatar}
-                  alt={rev.studentName}
-                  className="h-10 w-10 rounded-full border border-border object-cover"
-                />
+                {rev.studentAvatar ? (
+                  <img
+                    src={rev.studentAvatar}
+                    alt={rev.studentName || "Student"}
+                    className="h-10 w-10 rounded-full border border-border object-cover"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-500/10 text-xs font-bold text-purple-600 border border-purple-500/20">
+                    {(rev.studentName?.[0] || "S").toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-foreground text-sm">{rev.studentName}</p>
