@@ -22,6 +22,7 @@ import {
   UserCheck,
   Check,
   Image as ImageIcon,
+  Edit3,
 } from "lucide-react";
 import { useAppStore, Course } from "@/lib/store";
 import { toast } from "sonner";
@@ -51,6 +52,35 @@ export default function AdminCoursesPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [previewCourse, setPreviewCourse] = useState<Course | null>(null);
+
+  // Edit Course State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTagline, setEditTagline] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("Generative AI");
+  const [editLevel, setEditLevel] = useState<"Beginner" | "Intermediate" | "Advanced">("Beginner");
+  const [editPrice, setEditPrice] = useState(2999);
+  const [editDuration, setEditDuration] = useState("4h 30m");
+  const [editCoverImage, setEditCoverImage] = useState("");
+  const [editStatus, setEditStatus] = useState<"published" | "draft" | "pending_approval">("published");
+  const [editInstructorId, setEditInstructorId] = useState("");
+  const [editModules, setEditModules] = useState<
+    {
+      id: string;
+      title: string;
+      lessons: {
+        id: string;
+        title: string;
+        videoUrl: string;
+        duration?: string;
+        summary?: string;
+        content?: string;
+        quiz?: any[];
+      }[];
+    }[]
+  >([]);
 
   // Sync tab from URL if ?tab=enrollments
   React.useEffect(() => {
@@ -231,6 +261,210 @@ export default function AdminCoursesPage() {
         return m;
       })
     );
+  };
+
+  // Open Edit Modal & Populate Form
+  const handleOpenEditModal = (course: Course) => {
+    setEditingCourseId(course.id);
+    setEditTitle(course.title || "");
+    setEditTagline(course.tagline || "");
+    setEditDescription(course.description || course.tagline || "");
+    setEditCategory(course.category || "Generative AI");
+    setEditLevel(course.level || "Beginner");
+    setEditPrice(course.price ?? 0);
+    setEditDuration(course.duration || "4h 30m");
+    setEditCoverImage(course.coverImage || "");
+    setEditStatus(course.status || "published");
+    setEditInstructorId(course.instructor?.id || "");
+
+    const clonedModules =
+      course.modules && course.modules.length > 0
+        ? course.modules.map((m) => ({
+            id: m.id,
+            title: m.title,
+            lessons: m.lessons.map((l) => ({
+              id: l.id,
+              title: l.title,
+              videoUrl: l.videoUrl,
+              duration: l.duration || "18:20",
+              summary: l.summary || "",
+              content: l.content || "",
+              quiz: l.quiz || [],
+            })),
+          }))
+        : [
+            {
+              id: `mod-${Date.now()}-1`,
+              title: "Module 1: Foundations & Core Architecture",
+              lessons: [
+                {
+                  id: `l-${Date.now()}-1`,
+                  title: "Introduction & Setup",
+                  videoUrl: "https://www.youtube.com/embed/jC4v5AS4RIM",
+                  duration: "18:20",
+                },
+              ],
+            },
+          ];
+
+    setEditModules(clonedModules);
+    setIsEditModalOpen(true);
+  };
+
+  // Edit Module & Lesson Handlers
+  const handleAddEditModule = () => {
+    const nextIdx = editModules.length + 1;
+    setEditModules((prev) => [
+      ...prev,
+      {
+        id: `m-${Date.now()}-${nextIdx}`,
+        title: `Module ${nextIdx}: Advanced Topics`,
+        lessons: [
+          {
+            id: `l-${Date.now()}-1`,
+            title: `Key Principles & Walkthrough`,
+            videoUrl: "https://www.youtube.com/embed/aircAruvnKk",
+            duration: "18:20",
+          },
+        ],
+      },
+    ]);
+  };
+
+  const handleRemoveEditModule = (modIdx: number) => {
+    if (editModules.length <= 1) {
+      toast.error("A course must have at least one module.");
+      return;
+    }
+    setEditModules((prev) => prev.filter((_, idx) => idx !== modIdx));
+  };
+
+  const handleUpdateEditModuleTitle = (modIdx: number, title: string) => {
+    setEditModules((prev) =>
+      prev.map((m, idx) => (idx === modIdx ? { ...m, title } : m))
+    );
+  };
+
+  const handleAddEditLesson = (modIdx: number) => {
+    setEditModules((prev) =>
+      prev.map((m, idx) => {
+        if (idx === modIdx) {
+          const nextLessonNum = m.lessons.length + 1;
+          return {
+            ...m,
+            lessons: [
+              ...m.lessons,
+              {
+                id: `l-${Date.now()}-${nextLessonNum}`,
+                title: `Lesson ${nextLessonNum}: Hands-on Application`,
+                videoUrl: "https://www.youtube.com/embed/5qap5aO4i9A",
+                duration: "18:20",
+              },
+            ],
+          };
+        }
+        return m;
+      })
+    );
+  };
+
+  const handleRemoveEditLesson = (modIdx: number, lessonIdx: number) => {
+    setEditModules((prev) =>
+      prev.map((m, idx) => {
+        if (idx === modIdx) {
+          if (m.lessons.length <= 1) {
+            toast.error("Each module must have at least one lesson.");
+            return m;
+          }
+          return {
+            ...m,
+            lessons: m.lessons.filter((_, lIdx) => lIdx !== lessonIdx),
+          };
+        }
+        return m;
+      })
+    );
+  };
+
+  const handleUpdateEditLesson = (
+    modIdx: number,
+    lessonIdx: number,
+    field: "title" | "videoUrl" | "duration",
+    val: string
+  ) => {
+    setEditModules((prev) =>
+      prev.map((m, idx) => {
+        if (idx === modIdx) {
+          return {
+            ...m,
+            lessons: m.lessons.map((l, lIdx) =>
+              lIdx === lessonIdx ? { ...l, [field]: val } : l
+            ),
+          };
+        }
+        return m;
+      })
+    );
+  };
+
+  const handleEditCourseSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourseId) return;
+    if (!editTitle.trim()) {
+      toast.error("Please enter a course title.");
+      return;
+    }
+
+    const selectedInstructorUser = users.find((u) => u.id === editInstructorId) || currentUser;
+    const instructorObj = {
+      id: selectedInstructorUser?.id || "admin-system",
+      name: selectedInstructorUser?.name || "Super Admin",
+      title:
+        selectedInstructorUser?.title ||
+        (selectedInstructorUser?.role === "admin"
+          ? "Platform Administrator"
+          : "Verified Instructor"),
+      avatar:
+        selectedInstructorUser?.avatar ||
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    };
+
+    const formattedModules = editModules.map((m, mIdx) => ({
+      id: m.id || `mod-${Date.now()}-${mIdx}`,
+      title: m.title.trim() || `Module ${mIdx + 1}`,
+      lessons: m.lessons.map((l, lIdx) => ({
+        id: l.id || `l-${Date.now()}-${mIdx}-${lIdx}`,
+        title: l.title.trim() || `Lesson ${lIdx + 1}`,
+        duration: l.duration || "18:20",
+        videoUrl: l.videoUrl.trim() || "https://www.youtube.com/embed/jC4v5AS4RIM",
+        summary: l.summary || `Practical lesson on ${l.title}`,
+        content:
+          l.content ||
+          `Welcome to this course module. Review the video instructions and explore the real-time AI tutor dock on the right.`,
+        quiz: l.quiz || [],
+      })),
+    }));
+
+    updateCourse(editingCourseId, {
+      title: editTitle.trim(),
+      tagline: editTagline.trim() || "Master high-impact skills with adaptive AI tutoring.",
+      description:
+        editDescription.trim() ||
+        editTagline.trim() ||
+        "Comprehensive interactive curriculum designed for practical application.",
+      category: editCategory,
+      level: editLevel,
+      price: Number(editPrice) || 0,
+      duration: editDuration,
+      coverImage: editCoverImage.trim() || undefined,
+      status: editStatus,
+      instructor: instructorObj,
+      modules: formattedModules,
+    });
+
+    toast.success(`Course "${editTitle}" updated successfully! 🚀`);
+    setIsEditModalOpen(false);
+    setEditingCourseId(null);
   };
 
   const handleTogglePublish = (course: Course) => {
@@ -564,6 +798,16 @@ export default function AdminCoursesPage() {
                     className="inline-flex items-center gap-1 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-bold text-foreground hover:bg-muted transition-all cursor-pointer shadow-2xs hover:scale-102"
                   >
                     <Eye className="h-3.5 w-3.5 text-purple-600" /> Preview Syllabus
+                  </button>
+
+                  {/* Edit Course Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditModal(course)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3.5 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 transition-all cursor-pointer shadow-2xs hover:scale-102"
+                    title="Edit course details, video lessons, and modules"
+                  >
+                    <Edit3 className="h-3.5 w-3.5 text-blue-600" /> Edit
                   </button>
 
                   {/* Toggle publish / unpublish */}
@@ -1023,6 +1267,377 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
+      {/* MODAL: Edit Course */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl sm:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600/10 text-blue-600">
+                  <Edit3 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-foreground">Edit Course Details & Curriculum</h2>
+                  <p className="text-xs text-muted-foreground">Modify title, videos, modules, and marketplace settings</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditCourseSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Course Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="e.g. Next.js 15 Full-Stack Masterclass"
+                  className="w-full rounded-2xl border border-input bg-background p-3 text-xs sm:text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Tagline / Brief Hook</label>
+                <input
+                  type="text"
+                  value={editTagline}
+                  onChange={(e) => setEditTagline(e.target.value)}
+                  placeholder="e.g. Build real-world production apps with modern server components"
+                  className="w-full rounded-2xl border border-input bg-background p-3 text-xs sm:text-sm outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Detailed Description</label>
+                <textarea
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="In-depth overview of curriculum and learning outcomes..."
+                  className="w-full rounded-2xl border border-input bg-background p-3 text-xs sm:text-sm outline-none focus:border-blue-600 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Category</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-blue-600"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Difficulty Level</label>
+                  <select
+                    value={editLevel}
+                    onChange={(e) => setEditLevel(e.target.value as any)}
+                    className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-blue-600"
+                  >
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Price (₹ INR)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(Number(e.target.value))}
+                    className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as any)}
+                    className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-blue-600"
+                  >
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                    <option value="pending_approval">Pending Approval</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Assigned Instructor</label>
+                  <select
+                    value={editInstructorId}
+                    onChange={(e) => setEditInstructorId(e.target.value)}
+                    className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-blue-600"
+                  >
+                    {instructors.map((inst) => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.name} ({inst.role.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Total Duration</label>
+                  <input
+                    type="text"
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(e.target.value)}
+                    placeholder="e.g. 5h 45m"
+                    className="w-full rounded-2xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-blue-600"
+                  />
+                </div>
+              </div>
+
+              {/* Course Preview / Cover Image Section */}
+              <div className="space-y-3 rounded-2xl border border-border/80 bg-muted/20 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-blue-600" />
+                    <label className="text-xs font-bold text-foreground">
+                      Course Preview Image (Cover Photo)
+                    </label>
+                  </div>
+                  {editCoverImage && (
+                    <button
+                      type="button"
+                      onClick={() => setEditCoverImage("")}
+                      className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                </div>
+
+                {/* File Upload with Cloudinary */}
+                <ImageUpload
+                  label=""
+                  currentImageUrl={editCoverImage}
+                  onImageUploaded={(url) => setEditCoverImage(url)}
+                />
+
+                {/* Direct URL input with preset chips */}
+                <div className="space-y-1.5 pt-1">
+                  <input
+                    type="url"
+                    value={editCoverImage}
+                    onChange={(e) => setEditCoverImage(e.target.value)}
+                    placeholder="Or enter direct image URL (e.g. https://images.unsplash.com/...)"
+                    className="w-full rounded-xl border border-input bg-background p-2.5 text-xs font-semibold text-foreground outline-none focus:border-blue-600"
+                  />
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">Suggested Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditCoverImage(
+                          "https://images.unsplash.com/photo-1677442136019-21780efad99a?w=800&auto=format&fit=crop&q=80"
+                        )
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-0.5 hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-600 transition-colors cursor-pointer"
+                    >
+                      🤖 AI & LLMs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditCoverImage(
+                          "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&auto=format&fit=crop&q=80"
+                        )
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-0.5 hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-600 transition-colors cursor-pointer"
+                    >
+                      📊 Data Science
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditCoverImage(
+                          "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80"
+                        )
+                      }
+                      className="rounded-lg border border-border bg-background px-2 py-0.5 hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-600 transition-colors cursor-pointer"
+                    >
+                      💻 Full-Stack
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Curriculum Modules & Lessons Section */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Film className="h-4 w-4 text-blue-600" />
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      Curriculum Modules ({editModules.length}) & Lessons ({editModules.flatMap((m) => m.lessons).length})
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddEditModule}
+                    className="inline-flex items-center gap-1 rounded-xl bg-blue-600/10 border border-blue-500/30 px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-600/20 transition-all cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> + Add Module
+                  </button>
+                </div>
+
+                {editModules.map((module, modIdx) => (
+                  <div key={module.id} className="rounded-2xl border border-border bg-muted/40 p-4 space-y-3">
+                    {/* Module Header Bar */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-1 items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-[10px] font-extrabold text-white">
+                          {modIdx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={module.title}
+                          onChange={(e) => handleUpdateEditModuleTitle(modIdx, e.target.value)}
+                          placeholder={`Module ${modIdx + 1} Title...`}
+                          className="w-full rounded-xl border border-input bg-background px-3 py-1.5 text-xs font-bold text-foreground outline-none focus:border-blue-600"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleAddEditLesson(modIdx)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-500/20 cursor-pointer"
+                          title="Add lesson to this module"
+                        >
+                          <Plus className="h-3 w-3" /> Lesson
+                        </button>
+                        {editModules.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEditModule(modIdx)}
+                            className="rounded-lg border border-rose-500/30 p-1 text-rose-600 hover:bg-rose-500/10 cursor-pointer"
+                            title="Remove module"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Lessons inside Module */}
+                    <div className="space-y-2.5 pl-2 sm:pl-4 border-l-2 border-blue-500/30">
+                      {module.lessons.map((lesson, lessonIdx) => (
+                        <div
+                          key={lesson.id}
+                          className="grid grid-cols-1 gap-2 sm:grid-cols-12 items-center rounded-xl bg-background/90 p-2.5 border border-border/60"
+                        >
+                          <div className="sm:col-span-5">
+                            <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                              Lesson {lessonIdx + 1} Title
+                            </label>
+                            <input
+                              type="text"
+                              value={lesson.title}
+                              onChange={(e) =>
+                                handleUpdateEditLesson(modIdx, lessonIdx, "title", e.target.value)
+                              }
+                              placeholder="e.g. Core Architecture Setup"
+                              className="w-full rounded-lg border border-input bg-background p-1.5 text-xs outline-none focus:border-blue-600"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-4">
+                            <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                              Video Embed URL
+                            </label>
+                            <input
+                              type="text"
+                              value={lesson.videoUrl}
+                              onChange={(e) =>
+                                handleUpdateEditLesson(modIdx, lessonIdx, "videoUrl", e.target.value)
+                              }
+                              placeholder="https://www.youtube.com/embed/..."
+                              className="w-full rounded-lg border border-input bg-background p-1.5 text-xs font-mono outline-none focus:border-blue-600"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                              Duration
+                            </label>
+                            <input
+                              type="text"
+                              value={lesson.duration || "18:20"}
+                              onChange={(e) =>
+                                handleUpdateEditLesson(modIdx, lessonIdx, "duration", e.target.value)
+                              }
+                              placeholder="18:20"
+                              className="w-full rounded-lg border border-input bg-background p-1.5 text-xs outline-none focus:border-blue-600"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-1 flex justify-end pt-2 sm:pt-0">
+                            {module.lessons.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEditLesson(modIdx, lessonIdx)}
+                                className="p-1 text-rose-500 hover:bg-rose-500/10 rounded-md cursor-pointer"
+                                title="Remove lesson"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Big Prominent Add Another Module Button */}
+                <button
+                  type="button"
+                  onClick={handleAddEditModule}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-500/50 bg-blue-500/5 py-3 text-xs font-bold text-blue-600 hover:bg-blue-500/10 hover:border-blue-600 transition-all cursor-pointer shadow-sm"
+                >
+                  <Plus className="h-4 w-4" /> + Add Another Module (Module {editModules.length + 1})
+                </button>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="rounded-2xl border border-border px-5 py-2.5 text-xs font-bold text-foreground hover:bg-muted cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <Check className="h-4 w-4" /> Save Course Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* SYLLABUS PREVIEW MODAL */}
       {previewCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fade-in">
@@ -1170,6 +1785,17 @@ export default function AdminCoursesPage() {
                   className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
                 >
                   Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const c = previewCourse;
+                    setPreviewCourse(null);
+                    handleOpenEditModal(c);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-xs font-bold text-blue-600 hover:bg-blue-500/20 transition-all cursor-pointer"
+                >
+                  <Edit3 className="h-3.5 w-3.5 text-blue-600" /> Edit Course
                 </button>
                 <Link
                   href={`/user/learn/${previewCourse.id}`}
